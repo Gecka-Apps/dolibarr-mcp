@@ -1,6 +1,7 @@
 """Command line interface for Dolibarr MCP Server."""
 
 import asyncio
+import os
 import sys
 from typing import Optional
 
@@ -28,14 +29,18 @@ def test(url: Optional[str], api_key: Optional[str]):
 
 
 @cli.command()
-@click.option("--host", default="localhost", help="Host to bind to")
-@click.option("--port", default=8080, help="Port to bind to") 
+@click.option("--host", default="0.0.0.0", help="Host to bind to")
+@click.option("--port", default=8080, type=int, help="Port to bind to")
 def serve(host: str, port: int):
     """Start the Dolibarr MCP server."""
     click.echo(f"🚀 Starting Dolibarr MCP server on {host}:{port}")
     click.echo("📝 Use this server with MCP-compatible clients")
     click.echo("🔧 Configure your environment variables in .env file")
-    
+
+    os.environ.setdefault("MCP_TRANSPORT", "http")
+    os.environ["MCP_HTTP_HOST"] = host
+    os.environ["MCP_HTTP_PORT"] = str(port)
+
     # Run the MCP server
     asyncio.run(server_main())
 
