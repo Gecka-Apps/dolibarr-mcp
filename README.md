@@ -139,6 +139,42 @@ credentials with your own values:
 Restart Claude Desktop after saving the configuration. The MCP server reads the
 same environment variables when launched from Linux or macOS hosts.
 
+### Open WebUI configuration
+
+Open WebUI connects to the Dolibarr MCP server over Streamable HTTP, so start
+the server with `MCP_TRANSPORT=http` (locally or via Docker Compose) and then
+add a new MCP server in **Settings → Admin → MCP Servers**.
+
+Example configuration (URL + optional headers):
+
+```json
+{
+  "name": "dolibarr",
+  "url": "http://localhost:8080/",
+  "headers": {
+    "mcp-protocol-version": "2024-11-05"
+  }
+}
+```
+
+If you are running Docker Compose, point the URL at
+`http://<host>:${MCP_HOST_PORT:-18004}/` instead.
+
+### LM Studio configuration
+
+LM Studio also connects over Streamable HTTP. Ensure the server is running with
+`MCP_TRANSPORT=http` and then open **Settings → MCP Servers → Add Server**.
+
+Example entry:
+
+```text
+Name: dolibarr
+URL:  http://localhost:8080/
+```
+
+If you are using Docker, substitute the host port published by
+`docker-compose.yml`, for example `http://localhost:18004/`.
+
 ## ▶️ Usage
 
 ### Start the MCP server
