@@ -75,6 +75,7 @@ networks:
   dolibarr-mcp-network:
     driver: bridge
     name: ${MCP_NETWORK_NAME:-dolibarr-mcp-net}
+    external: ${MCP_NETWORK_EXTERNAL:-false}
 
 # To run the main server:
 # docker compose up -d

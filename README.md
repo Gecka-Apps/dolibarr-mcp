@@ -102,6 +102,7 @@ overwritten by `git pull` on your server.
 | `MCP_HOST_PORT` | Optional host port to publish in Docker Compose (default `18004`). |
 | `MCP_CONTAINER_NAME` | Optional Docker Compose container name (default `dolibarr-mcp-server`). |
 | `MCP_NETWORK_NAME` | Optional Docker Compose network name (default `dolibarr-mcp-net`). |
+| `MCP_NETWORK_EXTERNAL` | Set to `true` to reuse an existing Docker network (default `false`). |
 
 Example `.env`:
 
@@ -111,6 +112,7 @@ DOLIBARR_API_KEY=YOUR_API_KEY
 LOG_LEVEL=INFO
 MCP_CONTAINER_NAME=dolibarr-mcp-server
 MCP_NETWORK_NAME=dolibarr-mcp-net
+MCP_NETWORK_EXTERNAL=false
 ```
 
 ### Claude Desktop configuration
