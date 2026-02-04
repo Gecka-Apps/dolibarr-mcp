@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     image: dolibarr-mcp:latest
-    container_name: dolibarr-mcp-server
+    container_name: ${MCP_CONTAINER_NAME:-dolibarr-mcp-server}
     restart: unless-stopped
     environment:
       # Dolibarr API Configuration
@@ -74,7 +74,7 @@ services:
 networks:
   dolibarr-mcp-network:
     driver: bridge
-    name: dolibarr-mcp-net
+    name: ${MCP_NETWORK_NAME:-dolibarr-mcp-net}
 
 # To run the main server:
 # docker compose up -d

@@ -100,6 +100,8 @@ overwritten by `git pull` on your server.
 | `MCP_HTTP_HOST` | Host/interface to bind when using HTTP transport (default `0.0.0.0`). |
 | `MCP_HTTP_PORT` | Port to bind when using HTTP transport (default `8080`). |
 | `MCP_HOST_PORT` | Optional host port to publish in Docker Compose (default `18004`). |
+| `MCP_CONTAINER_NAME` | Optional Docker Compose container name (default `dolibarr-mcp-server`). |
+| `MCP_NETWORK_NAME` | Optional Docker Compose network name (default `dolibarr-mcp-net`). |
 
 Example `.env`:
 
@@ -107,6 +109,8 @@ Example `.env`:
 DOLIBARR_URL=https://your-dolibarr.example.com/api/index.php
 DOLIBARR_API_KEY=YOUR_API_KEY
 LOG_LEVEL=INFO
+MCP_CONTAINER_NAME=dolibarr-mcp-server
+MCP_NETWORK_NAME=dolibarr-mcp-net
 ```
 
 ### Claude Desktop configuration
