@@ -80,10 +80,10 @@ Include this value when filing issues or investigating user reports.
 Container assets live in `docker/`:
 
 - `Dockerfile` – production-ready image for the MCP server
-- `docker-compose.yml` – local stack that spins up Dolibarr together with the MCP server
+- `../docker-compose.yml` – compose file for the MCP server and optional checks
 
 Build and run the container locally with:
 
 ```bash
-docker compose -f docker/docker-compose.yml up --build
+docker compose up --build
 ```

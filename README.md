@@ -69,6 +69,10 @@ inside the virtual environment, for example
 ### Docker (optional)
 
 ```bash
+# Copy the template and update credentials (file is gitignored)
+cp .env.example .env
+
+# Start the HTTP listener for MCP clients (Open WebUI, MCPO, etc.)
 docker compose up -d
 # or
 docker build -t dolibarr-mcp .
@@ -84,6 +88,8 @@ docker run -d \
 
 The server reads configuration from the environment or a `.env` file. Both
 `DOLIBARR_URL` and `DOLIBARR_SHOP_URL` are accepted for the base API address.
+The repository `.gitignore` excludes `.env`, so a local `.env` file will not be
+overwritten by `git pull` on your server.
 
 | Variable | Description |
 | --- | --- |
@@ -93,6 +99,7 @@ The server reads configuration from the environment or a `.env` file. Both
 | `MCP_TRANSPORT` | Transport to use: `stdio` (default) or `http` for streamable HTTP. |
 | `MCP_HTTP_HOST` | Host/interface to bind when using HTTP transport (default `0.0.0.0`). |
 | `MCP_HTTP_PORT` | Port to bind when using HTTP transport (default `8080`). |
+| `MCP_HOST_PORT` | Optional host port to publish in Docker Compose (default `18004`). |
 
 Example `.env`:
 
@@ -153,6 +160,12 @@ MCP_TRANSPORT=http MCP_HTTP_PORT=8080 python -m dolibarr_mcp.dolibarr_mcp_server
 Then point Open WebUI’s MCP configuration at `http://<host>:8080/`. The MCP
 protocol headers (including `mcp-protocol-version`) are handled automatically by
 Open WebUI’s MCP client.
+
+### Docker Compose listener (recommended for MCP clients)
+
+The bundled `docker-compose.yml` starts the HTTP listener by default so MCP
+clients such as Open WebUI or MCPO can connect to
+`http://<host>:${MCP_HOST_PORT:-18004}/` right away.
 
 ### Test the Dolibarr credentials
 
