@@ -627,8 +627,28 @@ class DolibarrClient:
         return result if isinstance(result, list) else []
     
     async def get_invoice_by_id(self, invoice_id: int) -> Dict[str, Any]:
-        """Get specific invoice by ID."""
-        return await self.request("GET", f"invoices/{invoice_id}")
+        """Get specific invoice by ID including invoice lines.
+        
+        Note: Dolibarr API separates invoice header and lines into different endpoints.
+        This method combines both to provide complete invoice data including lines.
+        """
+        invoice = await self.request("GET", f"invoices/{invoice_id}")
+        
+        # Fetch invoice lines separately (Dolibarr API design)
+        try:
+            lines = await self.request("GET", f"invoices/{invoice_id}/lines")
+            invoice['lines'] = lines if isinstance(lines, list) else []
+        except DolibarrAPIError as e:
+            # If lines endpoint fails, return invoice without lines
+            # This ensures backward compatibility with older Dolibarr versions
+            self.logger.warning(
+                "Failed to fetch lines for invoice %s: %s",
+                invoice_id,
+                str(e)
+            )
+            invoice['lines'] = []
+        
+        return invoice
     
     async def create_invoice(
         self,
