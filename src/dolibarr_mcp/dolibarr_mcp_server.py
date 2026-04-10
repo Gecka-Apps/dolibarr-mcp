@@ -1165,6 +1165,109 @@ async def handle_list_tools():
             },
         ),
 
+        # Category Management
+        Tool(
+            name="get_categories",
+            description=(
+                "Get a list of categories, optionally filtered by type (product, customer, supplier). "
+                "Use this to discover available product categories before filtering products."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": ["product", "customer", "supplier", "contact"],
+                        "description": "Category type (default: product)",
+                        "default": "product",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of categories to return (default: 50)",
+                        "default": 50,
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number for pagination (default: 1)",
+                        "default": 1,
+                    },
+                    **_LIST_PARAMS,
+                },
+                "additionalProperties": False,
+            },
+        ),
+        Tool(
+            name="search_categories",
+            description=(
+                "Search categories by label. Use this to find a specific product category "
+                "before listing its products with get_products_by_category."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search term for category label",
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": ["product", "customer", "supplier", "contact"],
+                        "description": "Category type (default: product)",
+                        "default": "product",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results",
+                        "default": 20,
+                    },
+                    "fields": _LIST_PARAMS["fields"],
+                },
+                "required": ["query"],
+                "additionalProperties": False,
+            },
+        ),
+        Tool(
+            name="get_products_by_category",
+            description=(
+                "Get all products belonging to a specific category. "
+                "Use get_categories or search_categories first to find the category ID."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "category_id": {
+                        "type": "integer",
+                        "description": "Category ID",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of products to return (default: 50)",
+                        "default": 50,
+                    },
+                    "fields": _LIST_PARAMS["fields"],
+                },
+                "required": ["category_id"],
+                "additionalProperties": False,
+            },
+        ),
+        Tool(
+            name="get_product_categories",
+            description=(
+                "Get the list of categories assigned to a specific product."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "product_id": {
+                        "type": "integer",
+                        "description": "Product ID",
+                    },
+                },
+                "required": ["product_id"],
+                "additionalProperties": False,
+            },
+        ),
+
         # Raw API Access
         Tool(
             name="dolibarr_raw_api",
@@ -1441,6 +1544,34 @@ async def handle_call_tool(name: str, arguments: dict):
 
             elif name == "delete_project":
                 result = await client.delete_project(arguments["project_id"])
+
+            # Category Management
+            elif name == "get_categories":
+                lk = _extract_list_kwargs(arguments, config)
+                result = await client.get_categories(
+                    type=arguments.get("type", "product"), **lk, properties=properties,
+                )
+
+            elif name == "search_categories":
+                query = _escape_sqlfilter(arguments["query"])
+                limit = arguments.get("limit", 20)
+                sqlfilters = f"(t.label:like:'%{query}%')"
+                result = await client.search_categories(
+                    sqlfilters=sqlfilters,
+                    type=arguments.get("type", "product"),
+                    limit=limit,
+                    properties=properties,
+                )
+
+            elif name == "get_products_by_category":
+                result = await client.get_products_by_category(
+                    category_id=arguments["category_id"],
+                    limit=arguments.get("limit", 50),
+                    properties=properties,
+                )
+
+            elif name == "get_product_categories":
+                result = await client.get_product_categories(arguments["product_id"])
 
             # Raw API Access
             elif name == "dolibarr_raw_api":

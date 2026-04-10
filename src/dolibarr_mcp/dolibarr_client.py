@@ -946,6 +946,74 @@ class DolibarrClient:
         return await self.request("DELETE", f"projects/{project_id}")
 
     # ============================================================================
+    # CATEGORY MANAGEMENT
+    # ============================================================================
+
+    async def get_categories(
+        self,
+        type: str = "product",
+        limit: int = 100,
+        page: int = 1,
+        sortfield: Optional[str] = None,
+        sortorder: Optional[str] = None,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get list of categories filtered by type."""
+        type_map = {"product": "0", "customer": "1", "supplier": "2",
+                     "contact": "3", "member": "4"}
+        params: Dict[str, Any] = {
+            "limit": limit,
+            "type": type_map.get(type, type),
+        }
+        self._add_list_params(params, page=page, sortfield=sortfield,
+                              sortorder=sortorder, properties=properties)
+        result = await self.request("GET", "categories", params=params)
+        return result if isinstance(result, list) else []
+
+    async def search_categories(
+        self,
+        sqlfilters: str,
+        type: str = "product",
+        limit: int = 20,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Search categories using SQL filters."""
+        type_map = {"product": "0", "customer": "1", "supplier": "2",
+                     "contact": "3", "member": "4"}
+        params: Dict[str, Any] = {
+            "limit": limit,
+            "type": type_map.get(type, type),
+            "sqlfilters": sqlfilters,
+        }
+        if properties:
+            params["properties"] = properties
+        result = await self.request("GET", "categories", params=params)
+        return result if isinstance(result, list) else []
+
+    async def get_products_by_category(
+        self,
+        category_id: int,
+        limit: int = 100,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get products belonging to a category."""
+        params: Dict[str, Any] = {"limit": limit, "type": "product"}
+        if properties:
+            params["properties"] = properties
+        result = await self.request(
+            "GET", f"categories/{category_id}/objects", params=params,
+        )
+        return result if isinstance(result, list) else []
+
+    async def get_product_categories(
+        self,
+        product_id: int,
+    ) -> List[Dict[str, Any]]:
+        """Get categories assigned to a product."""
+        result = await self.request("GET", f"products/{product_id}/categories")
+        return result if isinstance(result, list) else []
+
+    # ============================================================================
     # RAW API CALL
     # ============================================================================
     

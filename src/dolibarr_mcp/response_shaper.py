@@ -111,6 +111,16 @@ ENTITY_FIELD_SETS: Dict[str, Dict[str, Optional[List[str]]]] = {
         ],
         "full": None,
     },
+    "category": {
+        "summary": [
+            "id", "label", "type", "fk_parent",
+        ],
+        "standard": [
+            "id", "label", "description", "type", "fk_parent",
+            "date_creation", "date_modification",
+        ],
+        "full": None,
+    },
 }
 
 
@@ -153,6 +163,12 @@ TOOL_RESPONSE_CONFIG: Dict[str, Dict[str, Any]] = {
     "search_products_by_label": {"entity_type": "product",  "field_set": "standard", "is_list": True},
     "search_customers":         {"entity_type": "customer", "field_set": "standard", "is_list": True},
     "search_projects":          {"entity_type": "project",  "field_set": "standard", "is_list": True},
+
+    # Category tools
+    "get_categories":         {"entity_type": "category", "field_set": "summary", "is_list": True},
+    "search_categories":      {"entity_type": "category", "field_set": "standard", "is_list": True},
+    "get_products_by_category": {"entity_type": "product", "field_set": "summary", "is_list": True},
+    "get_product_categories": {"entity_type": "category", "field_set": "summary", "is_list": True},
 
     # Detail tools → full
     "get_user_by_id":     {"entity_type": "user",     "field_set": "full", "is_list": False},
