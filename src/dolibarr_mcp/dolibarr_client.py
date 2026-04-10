@@ -458,12 +458,35 @@ class DolibarrClient:
     # USER MANAGEMENT
     # ============================================================================
     
-    async def get_users(self, limit: int = 100, page: int = 1) -> List[Dict[str, Any]]:
-        """Get list of users."""
-        params = {"limit": limit}
+    @staticmethod
+    def _add_list_params(
+        params: Dict[str, Any],
+        *,
+        page: int = 1,
+        sortfield: Optional[str] = None,
+        sortorder: Optional[str] = None,
+        properties: Optional[str] = None,
+    ) -> None:
+        """Inject common pagination/sort/properties params into *params*."""
         if page > 1:
             params["page"] = page
-        
+        if sortfield:
+            params["sortfield"] = sortfield
+            params["sortorder"] = sortorder or "ASC"
+        if properties:
+            params["properties"] = properties
+
+    async def get_users(
+        self,
+        limit: int = 100,
+        page: int = 1,
+        sortfield: Optional[str] = None,
+        sortorder: Optional[str] = None,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get list of users."""
+        params: Dict[str, Any] = {"limit": limit}
+        self._add_list_params(params, page=page, sortfield=sortfield, sortorder=sortorder, properties=properties)
         result = await self.request("GET", "users", params=params)
         return result if isinstance(result, list) else []
     
@@ -499,18 +522,30 @@ class DolibarrClient:
     # CUSTOMER/THIRD PARTY MANAGEMENT
     # ============================================================================
     
-    async def search_customers(self, sqlfilters: str, limit: int = 20) -> List[Dict[str, Any]]:
+    async def search_customers(
+        self,
+        sqlfilters: str,
+        limit: int = 20,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Search customers using SQL filters."""
-        params = {"limit": limit, "sqlfilters": sqlfilters}
+        params: Dict[str, Any] = {"limit": limit, "sqlfilters": sqlfilters}
+        if properties:
+            params["properties"] = properties
         result = await self.request("GET", "thirdparties", params=params)
         return result if isinstance(result, list) else []
 
-    async def get_customers(self, limit: int = 100, page: int = 1) -> List[Dict[str, Any]]:
+    async def get_customers(
+        self,
+        limit: int = 100,
+        page: int = 1,
+        sortfield: Optional[str] = None,
+        sortorder: Optional[str] = None,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Get list of customers/third parties."""
-        params = {"limit": limit}
-        if page > 1:
-            params["page"] = page
-        
+        params: Dict[str, Any] = {"limit": limit}
+        self._add_list_params(params, page=page, sortfield=sortfield, sortorder=sortorder, properties=properties)
         result = await self.request("GET", "thirdparties", params=params)
         return result if isinstance(result, list) else []
     
@@ -563,15 +598,30 @@ class DolibarrClient:
     # PRODUCT MANAGEMENT
     # ============================================================================
     
-    async def search_products(self, sqlfilters: str, limit: int = 20) -> List[Dict[str, Any]]:
+    async def search_products(
+        self,
+        sqlfilters: str,
+        limit: int = 20,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Search products using SQL filters."""
-        params = {"limit": limit, "sqlfilters": sqlfilters}
+        params: Dict[str, Any] = {"limit": limit, "sqlfilters": sqlfilters}
+        if properties:
+            params["properties"] = properties
         result = await self.request("GET", "products", params=params)
         return result if isinstance(result, list) else []
 
-    async def get_products(self, limit: int = 100) -> List[Dict[str, Any]]:
+    async def get_products(
+        self,
+        limit: int = 100,
+        page: int = 1,
+        sortfield: Optional[str] = None,
+        sortorder: Optional[str] = None,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Get list of products."""
-        params = {"limit": limit}
+        params: Dict[str, Any] = {"limit": limit}
+        self._add_list_params(params, page=page, sortfield=sortfield, sortorder=sortorder, properties=properties)
         result = await self.request("GET", "products", params=params)
         return result if isinstance(result, list) else []
     
@@ -617,12 +667,20 @@ class DolibarrClient:
     # INVOICE MANAGEMENT
     # ============================================================================
     
-    async def get_invoices(self, limit: int = 100, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_invoices(
+        self,
+        limit: int = 100,
+        page: int = 1,
+        status: Optional[str] = None,
+        sortfield: Optional[str] = None,
+        sortorder: Optional[str] = None,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Get list of invoices."""
-        params = {"limit": limit}
+        params: Dict[str, Any] = {"limit": limit}
         if status:
             params["status"] = status
-        
+        self._add_list_params(params, page=page, sortfield=sortfield, sortorder=sortorder, properties=properties)
         result = await self.request("GET", "invoices", params=params)
         return result if isinstance(result, list) else []
     
@@ -736,12 +794,20 @@ class DolibarrClient:
     # ORDER MANAGEMENT
     # ============================================================================
     
-    async def get_orders(self, limit: int = 100, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_orders(
+        self,
+        limit: int = 100,
+        page: int = 1,
+        status: Optional[str] = None,
+        sortfield: Optional[str] = None,
+        sortorder: Optional[str] = None,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Get list of orders."""
-        params = {"limit": limit}
+        params: Dict[str, Any] = {"limit": limit}
         if status:
             params["status"] = status
-        
+        self._add_list_params(params, page=page, sortfield=sortfield, sortorder=sortorder, properties=properties)
         result = await self.request("GET", "orders", params=params)
         return result if isinstance(result, list) else []
     
@@ -777,9 +843,17 @@ class DolibarrClient:
     # CONTACT MANAGEMENT
     # ============================================================================
     
-    async def get_contacts(self, limit: int = 100) -> List[Dict[str, Any]]:
+    async def get_contacts(
+        self,
+        limit: int = 100,
+        page: int = 1,
+        sortfield: Optional[str] = None,
+        sortorder: Optional[str] = None,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Get list of contacts."""
-        params = {"limit": limit}
+        params: Dict[str, Any] = {"limit": limit}
+        self._add_list_params(params, page=page, sortfield=sortfield, sortorder=sortorder, properties=properties)
         result = await self.request("GET", "contacts", params=params)
         return result if isinstance(result, list) else []
     
@@ -815,11 +889,20 @@ class DolibarrClient:
     # PROJECT MANAGEMENT
     # ============================================================================
     
-    async def get_projects(self, limit: int = 100, page: int = 1, status: Optional[int] = None) -> List[Dict[str, Any]]:
+    async def get_projects(
+        self,
+        limit: int = 100,
+        page: int = 1,
+        status: Optional[int] = None,
+        sortfield: Optional[str] = None,
+        sortorder: Optional[str] = None,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Get list of projects."""
-        params: Dict[str, Any] = {"limit": limit, "page": page}
+        params: Dict[str, Any] = {"limit": limit}
         if status is not None:
             params["status"] = status
+        self._add_list_params(params, page=page, sortfield=sortfield, sortorder=sortorder, properties=properties)
         result = await self.request("GET", "projects", params=params)
         return result if isinstance(result, list) else []
 
@@ -827,9 +910,16 @@ class DolibarrClient:
         """Get specific project by ID."""
         return await self.request("GET", f"projects/{project_id}")
 
-    async def search_projects(self, sqlfilters: str, limit: int = 20) -> List[Dict[str, Any]]:
+    async def search_projects(
+        self,
+        sqlfilters: str,
+        limit: int = 20,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         """Search projects using SQL filters."""
-        params = {"limit": limit, "sqlfilters": sqlfilters}
+        params: Dict[str, Any] = {"limit": limit, "sqlfilters": sqlfilters}
+        if properties:
+            params["properties"] = properties
         result = await self.request("GET", "projects", params=params)
         return result if isinstance(result, list) else []
 
