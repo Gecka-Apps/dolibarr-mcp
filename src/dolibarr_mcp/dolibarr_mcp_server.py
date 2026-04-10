@@ -1873,10 +1873,25 @@ async def main():
         else:
             print("✅ API connection validated", file=sys.stderr)
     
-    # Run server regardless of API status
-    print("🚀 Starting Professional Dolibarr MCP server...", file=sys.stderr)
-    print("✅ Server ready with comprehensive ERP management capabilities", file=sys.stderr)
-    print("📝 Tools will attempt to connect when called", file=sys.stderr)
+    # Test database connection for analytics
+    if config.db_available:
+        try:
+            from .analytics import _get_connection
+            print("🧪 Testing database connection...", file=sys.stderr)
+            conn = await _get_connection(config)
+            conn.close()
+            print("✅ Database connection successful", file=sys.stderr)
+            print("📊 Analytics tools available (top sellers, sales summary, low stock)", file=sys.stderr)
+        except Exception as e:
+            print(f"⚠️  Database connection failed: {e}", file=sys.stderr)
+            print("⚠️  Analytics tools will not work, but API tools remain available", file=sys.stderr)
+    else:
+        print("ℹ️  Database not configured — analytics tools disabled", file=sys.stderr)
+        print("📝 Set DB_HOST, DB_NAME, DB_USER, DB_PASSWORD to enable analytics", file=sys.stderr)
+
+    # Run server regardless of API/DB status
+    print("🚀 Starting Dolibarr MCP server...", file=sys.stderr)
+    print("✅ Server ready", file=sys.stderr)
 
     try:
         if config.mcp_transport == "http":
