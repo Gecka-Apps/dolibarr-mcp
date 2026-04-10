@@ -1,5 +1,5 @@
 # Multi-stage Docker build for Dolibarr MCP Server
-FROM python:3.11-slim as builder
+FROM python:3.12-slim as builder
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -26,11 +26,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 COPY README.md LICENSE ./
 
-# Install the package
-RUN pip install -e .
+# Install the package with analytics support
+RUN pip install -e ".[analytics]"
 
 # Production stage
-FROM python:3.11-slim as production
+FROM python:3.12-slim as production
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -46,7 +46,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
+COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
 COPY --from=builder /app/src/ /app/src/
 
@@ -61,7 +61,7 @@ USER dolibarr
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -m dolibarr_mcp.test_connection || exit 1
 
-# Expose port (for future HTTP interface)
+# Expose port (for HTTP interface)
 EXPOSE 8080
 
 # Default command runs the MCP server
@@ -69,8 +69,8 @@ CMD ["python", "-m", "dolibarr_mcp.dolibarr_mcp_server"]
 
 # Labels for metadata
 LABEL org.opencontainers.image.title="Dolibarr MCP Server" \
-      org.opencontainers.image.description="Professional Model Context Protocol server for Dolibarr ERP integration" \
-      org.opencontainers.image.url="https://github.com/latinogino/dolibarr-mcp" \
-      org.opencontainers.image.source="https://github.com/latinogino/dolibarr-mcp" \
-      org.opencontainers.image.version="1.0.1" \
+      org.opencontainers.image.description="Model Context Protocol server for Dolibarr ERP with analytics" \
+      org.opencontainers.image.url="https://github.com/Gecka-Apps/dolibarr-mcp" \
+      org.opencontainers.image.source="https://github.com/Gecka-Apps/dolibarr-mcp" \
+      org.opencontainers.image.version="1.2.0" \
       org.opencontainers.image.licenses="MIT"
