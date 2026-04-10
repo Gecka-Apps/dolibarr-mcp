@@ -18,6 +18,7 @@ from mcp.types import Tool, TextContent
 # Import our Dolibarr components
 from .config import Config
 from .dolibarr_client import DolibarrClient, DolibarrAPIError
+from .response_shaper import format_response, get_properties_param, TOOL_RESPONSE_CONFIG
 
 # HTTP transport imports
 from starlette.applications import Starlette
@@ -42,6 +43,31 @@ server = Server("dolibarr-mcp")
 def _escape_sqlfilter(value: str) -> str:
     """Escape single quotes for SQL filters."""
     return value.replace("'", "''")
+
+
+# Common schema fragments injected into list/search/detail tool schemas.
+_LIST_PARAMS = {
+    "fields": {
+        "type": "string",
+        "description": "Comma-separated list of fields to return (e.g. 'id,ref,label,price'). Default: optimized summary set.",
+    },
+    "sortfield": {
+        "type": "string",
+        "description": "Field to sort by (e.g. 'date', 'ref', 'total_ttc')",
+    },
+    "sortorder": {
+        "type": "string",
+        "enum": ["ASC", "DESC"],
+        "description": "Sort direction (default: ASC)",
+    },
+}
+
+_DETAIL_PARAMS = {
+    "fields": {
+        "type": "string",
+        "description": "Comma-separated fields to return. Default: all fields.",
+    },
+}
 
 
 @server.list_tools()
@@ -80,6 +106,7 @@ async def handle_list_tools():
                         "description": "Maximum number of results",
                         "default": 20,
                     },
+                    "fields": _LIST_PARAMS["fields"],
                 },
                 "required": ["ref_prefix"],
                 "additionalProperties": False,
@@ -104,6 +131,7 @@ async def handle_list_tools():
                         "description": "Maximum number of results",
                         "default": 20,
                     },
+                    "fields": _LIST_PARAMS["fields"],
                 },
                 "required": ["query"],
                 "additionalProperties": False,
@@ -127,6 +155,7 @@ async def handle_list_tools():
                         "description": "Maximum number of results",
                         "default": 20,
                     },
+                    "fields": _LIST_PARAMS["fields"],
                 },
                 "required": ["label_search"],
                 "additionalProperties": False,
@@ -162,14 +191,15 @@ async def handle_list_tools():
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of users to return (default: 100)",
-                        "default": 100,
+                        "description": "Maximum number of users to return (default: 20)",
+                        "default": 20,
                     },
                     "page": {
                         "type": "integer",
                         "description": "Page number for pagination (default: 1)",
                         "default": 1,
                     },
+                    **_LIST_PARAMS,
                 },
                 "additionalProperties": False,
             },
@@ -187,7 +217,8 @@ async def handle_list_tools():
                     "user_id": {
                         "type": "integer",
                         "description": "Exact numeric Dolibarr user ID (not login, not email).",
-                    }
+                    },
+                    **_DETAIL_PARAMS,
                 },
                 "required": ["user_id"],
                 "additionalProperties": False,
@@ -260,14 +291,15 @@ async def handle_list_tools():
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of customers to return (default: 100)",
-                        "default": 100,
+                        "description": "Maximum number of customers to return (default: 20)",
+                        "default": 20,
                     },
                     "page": {
                         "type": "integer",
                         "description": "Page number for pagination (default: 1)",
                         "default": 1,
                     },
+                    **_LIST_PARAMS,
                 },
                 "additionalProperties": False,
             },
@@ -285,7 +317,8 @@ async def handle_list_tools():
                     "customer_id": {
                         "type": "integer",
                         "description": "Exact numeric Dolibarr customer ID (not name).",
-                    }
+                    },
+                    **_DETAIL_PARAMS,
                 },
                 "required": ["customer_id"],
                 "additionalProperties": False,
@@ -368,7 +401,7 @@ async def handle_list_tools():
         Tool(
             name="get_products",
             description=(
-                "Get an unfiltered list of products from Dolibarr. "
+                "Get an unfiltered paginated list of products from Dolibarr. "
                 "Intended for debugging or bulk inspection only. DO NOT use this tool to search by reference or label "
                 "(use search_products_by_ref or search_products_by_label instead)."
             ),
@@ -377,9 +410,15 @@ async def handle_list_tools():
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of products to return (default: 100)",
-                        "default": 100,
-                    }
+                        "description": "Maximum number of products to return (default: 20)",
+                        "default": 20,
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number for pagination (default: 1)",
+                        "default": 1,
+                    },
+                    **_LIST_PARAMS,
                 },
                 "additionalProperties": False,
             },
@@ -397,7 +436,8 @@ async def handle_list_tools():
                     "product_id": {
                         "type": "integer",
                         "description": "Exact numeric Dolibarr product ID (not ref).",
-                    }
+                    },
+                    **_DETAIL_PARAMS,
                 },
                 "required": ["product_id"],
                 "additionalProperties": False,
@@ -471,13 +511,19 @@ async def handle_list_tools():
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of invoices to return (default: 100)",
-                        "default": 100,
+                        "description": "Maximum number of invoices to return (default: 20)",
+                        "default": 20,
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number for pagination (default: 1)",
+                        "default": 1,
                     },
                     "status": {
                         "type": "string",
                         "description": "Invoice status filter (draft, unpaid, paid, etc.)",
                     },
+                    **_LIST_PARAMS,
                 },
                 "additionalProperties": False,
             },
@@ -485,7 +531,7 @@ async def handle_list_tools():
         Tool(
             name="get_invoice_by_id",
             description=(
-                "Get the details of exactly one invoice by numeric ID. "
+                "Get the details of exactly one invoice by numeric ID, including line items. "
                 "Use this only when you already know the internal Dolibarr invoice_id. "
                 "Do not pass invoice reference here."
             ),
@@ -495,7 +541,8 @@ async def handle_list_tools():
                     "invoice_id": {
                         "type": "integer",
                         "description": "Exact numeric Dolibarr invoice ID.",
-                    }
+                    },
+                    **_DETAIL_PARAMS,
                 },
                 "required": ["invoice_id"],
                 "additionalProperties": False,
@@ -780,13 +827,19 @@ async def handle_list_tools():
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of orders to return (default: 100)",
-                        "default": 100,
+                        "description": "Maximum number of orders to return (default: 20)",
+                        "default": 20,
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number for pagination (default: 1)",
+                        "default": 1,
                     },
                     "status": {
                         "type": "string",
                         "description": "Order status filter",
                     },
+                    **_LIST_PARAMS,
                 },
                 "additionalProperties": False,
             },
@@ -804,7 +857,8 @@ async def handle_list_tools():
                     "order_id": {
                         "type": "integer",
                         "description": "Exact numeric Dolibarr order ID.",
-                    }
+                    },
+                    **_DETAIL_PARAMS,
                 },
                 "required": ["order_id"],
                 "additionalProperties": False,
@@ -880,9 +934,15 @@ async def handle_list_tools():
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of contacts to return (default: 100)",
-                        "default": 100,
-                    }
+                        "description": "Maximum number of contacts to return (default: 20)",
+                        "default": 20,
+                    },
+                    "page": {
+                        "type": "integer",
+                        "description": "Page number for pagination (default: 1)",
+                        "default": 1,
+                    },
+                    **_LIST_PARAMS,
                 },
                 "additionalProperties": False,
             },
@@ -900,7 +960,8 @@ async def handle_list_tools():
                     "contact_id": {
                         "type": "integer",
                         "description": "Exact numeric Dolibarr contact ID.",
-                    }
+                    },
+                    **_DETAIL_PARAMS,
                 },
                 "required": ["contact_id"],
                 "additionalProperties": False,
@@ -973,8 +1034,8 @@ async def handle_list_tools():
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of projects to return (default: 100)",
-                        "default": 100,
+                        "description": "Maximum number of projects to return (default: 20)",
+                        "default": 20,
                     },
                     "page": {
                         "type": "integer",
@@ -986,6 +1047,7 @@ async def handle_list_tools():
                         "description": "Project status filter (e.g. 0=draft, 1=open, 2=closed)",
                         "default": 1,
                     },
+                    **_LIST_PARAMS,
                 },
                 "additionalProperties": False,
             },
@@ -1003,7 +1065,8 @@ async def handle_list_tools():
                     "project_id": {
                         "type": "integer",
                         "description": "Exact numeric Dolibarr project ID.",
-                    }
+                    },
+                    **_DETAIL_PARAMS,
                 },
                 "required": ["project_id"],
                 "additionalProperties": False,
@@ -1027,6 +1090,7 @@ async def handle_list_tools():
                         "description": "Maximum number of results",
                         "default": 20,
                     },
+                    "fields": _LIST_PARAMS["fields"],
                 },
                 "required": ["query"],
                 "additionalProperties": False,
@@ -1138,56 +1202,78 @@ async def handle_list_tools():
     ]
 
 
+def _extract_list_kwargs(arguments: dict, config: Config) -> dict:
+    """Extract common list/search parameters from tool arguments."""
+    kwargs = {}
+    limit = arguments.get("limit", config.default_list_limit)
+    kwargs["limit"] = limit
+    page = arguments.get("page")
+    if page is not None:
+        kwargs["page"] = page
+    sortfield = arguments.get("sortfield")
+    if sortfield:
+        kwargs["sortfield"] = sortfield
+        kwargs["sortorder"] = arguments.get("sortorder", "ASC")
+    return kwargs
+
+
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: dict):
     """Handle all tool calls using the DolibarrClient."""
-    
+
     try:
         # Initialize the config and client
         config = Config()
-        
+
+        # Compute server-side field selection via Dolibarr ?properties= param
+        properties = get_properties_param(
+            TOOL_RESPONSE_CONFIG.get(name, {}).get("entity_type"),
+            TOOL_RESPONSE_CONFIG.get(name, {}).get("field_set", "full"),
+            [f.strip() for f in arguments["fields"].split(",") if f.strip()]
+            if arguments.get("fields") else None,
+        )
+
         async with DolibarrClient(config) as client:
-            
+
             # System & Info
             if name == "test_connection":
                 result = await client.get_status()
                 if 'success' not in result:
                     result = {"status": "success", "message": "API connection working", "data": result}
-            
+
             elif name == "get_status":
                 result = await client.get_status()
-            
+
             # Search Tools
             elif name == "search_products_by_ref":
                 ref_prefix = _escape_sqlfilter(arguments['ref_prefix'])
                 limit = arguments.get('limit', 20)
                 sqlfilters = f"(t.ref:like:'{ref_prefix}%')"
-                result = await client.search_products(sqlfilters=sqlfilters, limit=limit)
+                result = await client.search_products(sqlfilters=sqlfilters, limit=limit, properties=properties)
 
             elif name == "search_customers":
                 query = _escape_sqlfilter(arguments['query'])
                 limit = arguments.get('limit', 20)
                 sqlfilters = f"((t.nom:like:'%{query}%') OR (t.name_alias:like:'%{query}%'))"
-                result = await client.search_customers(sqlfilters=sqlfilters, limit=limit)
+                result = await client.search_customers(sqlfilters=sqlfilters, limit=limit, properties=properties)
 
             elif name == "search_products_by_label":
                 label_search = _escape_sqlfilter(arguments['label_search'])
                 limit = arguments.get('limit', 20)
                 sqlfilters = f"(t.label:like:'%{label_search}%')"
-                result = await client.search_products(sqlfilters=sqlfilters, limit=limit)
+                result = await client.search_products(sqlfilters=sqlfilters, limit=limit, properties=properties)
 
             elif name == "resolve_product_ref":
                 ref = arguments['ref']
                 ref_esc = _escape_sqlfilter(ref)
                 sqlfilters = f"(t.ref:like:'{ref_esc}')"
                 products = await client.search_products(sqlfilters=sqlfilters, limit=2)
-                
+
                 if not products:
                     result = {"status": "not_found", "message": f"Product with ref '{ref}' not found"}
                 elif len(products) == 1:
                     result = {"status": "ok", "product": products[0]}
                 else:
-                    # Check if one is exact match
                     exact_matches = [p for p in products if p.get('ref') == ref]
                     if len(exact_matches) == 1:
                         result = {"status": "ok", "product": exact_matches[0]}
@@ -1196,100 +1282,91 @@ async def handle_call_tool(name: str, arguments: dict):
 
             # User Management
             elif name == "get_users":
-                result = await client.get_users(
-                    limit=arguments.get('limit', 100),
-                    page=arguments.get('page', 1)
-                )
-            
+                lk = _extract_list_kwargs(arguments, config)
+                result = await client.get_users(**lk, properties=properties)
+
             elif name == "get_user_by_id":
                 result = await client.get_user_by_id(arguments['user_id'])
-            
+
             elif name == "create_user":
-                result = await client.create_user(**arguments)
-            
+                result = await client.create_user(**{k: v for k, v in arguments.items() if k != "fields"})
+
             elif name == "update_user":
                 user_id = arguments.pop('user_id')
-                result = await client.update_user(user_id, **arguments)
-            
+                result = await client.update_user(user_id, **{k: v for k, v in arguments.items() if k != "fields"})
+
             elif name == "delete_user":
                 result = await client.delete_user(arguments['user_id'])
-            
+
             # Customer Management
             elif name == "get_customers":
-                result = await client.get_customers(
-                    limit=arguments.get('limit', 100),
-                    page=arguments.get('page', 1)
-                )
-            
+                lk = _extract_list_kwargs(arguments, config)
+                result = await client.get_customers(**lk, properties=properties)
+
             elif name == "get_customer_by_id":
                 result = await client.get_customer_by_id(arguments['customer_id'])
-            
+
             elif name == "create_customer":
-                result = await client.create_customer(**arguments)
-            
+                result = await client.create_customer(**{k: v for k, v in arguments.items() if k != "fields"})
+
             elif name == "update_customer":
                 customer_id = arguments.pop('customer_id')
-                result = await client.update_customer(customer_id, **arguments)
-            
+                result = await client.update_customer(customer_id, **{k: v for k, v in arguments.items() if k != "fields"})
+
             elif name == "delete_customer":
                 result = await client.delete_customer(arguments['customer_id'])
-            
+
             # Product Management
             elif name == "get_products":
-                result = await client.get_products(limit=arguments.get('limit', 100))
-            
+                lk = _extract_list_kwargs(arguments, config)
+                result = await client.get_products(**lk, properties=properties)
+
             elif name == "get_product_by_id":
                 result = await client.get_product_by_id(arguments['product_id'])
-            
+
             elif name == "create_product":
-                result = await client.create_product(**arguments)
-            
+                result = await client.create_product(**{k: v for k, v in arguments.items() if k != "fields"})
+
             elif name == "update_product":
                 product_id = arguments.pop('product_id')
-                result = await client.update_product(product_id, **arguments)
-            
+                result = await client.update_product(product_id, **{k: v for k, v in arguments.items() if k != "fields"})
+
             elif name == "delete_product":
                 result = await client.delete_product(arguments['product_id'])
-            
+
             # Invoice Management
             elif name == "get_invoices":
-                result = await client.get_invoices(
-                    limit=arguments.get('limit', 100),
-                    status=arguments.get('status')
-                )
-            
+                lk = _extract_list_kwargs(arguments, config)
+                result = await client.get_invoices(**lk, status=arguments.get('status'), properties=properties)
+
             elif name == "get_invoice_by_id":
                 result = await client.get_invoice_by_id(arguments['invoice_id'])
-            
+
             elif name == "create_invoice":
-                result = await client.create_invoice(**arguments)
-            
+                result = await client.create_invoice(**{k: v for k, v in arguments.items() if k != "fields"})
+
             elif name == "update_invoice":
                 invoice_id = arguments.pop('invoice_id')
-                result = await client.update_invoice(invoice_id, **arguments)
-            
+                result = await client.update_invoice(invoice_id, **{k: v for k, v in arguments.items() if k != "fields"})
+
             elif name == "delete_invoice":
                 result = await client.delete_invoice(arguments['invoice_id'])
 
             elif name == "create_invoice_draft":
-                # Map customer_id to socid for the API
                 if "customer_id" in arguments:
                     arguments["socid"] = arguments.pop("customer_id")
-                
-                # Map project_id to fk_project if present
                 if "project_id" in arguments:
                     arguments["fk_project"] = arguments.pop("project_id")
-                
-                result = await client.create_invoice(**arguments)
+                result = await client.create_invoice(**{k: v for k, v in arguments.items() if k != "fields"})
 
             elif name == "add_invoice_line":
                 invoice_id = arguments.pop("invoice_id")
-                result = await client.add_invoice_line(invoice_id, **arguments)
+                result = await client.add_invoice_line(invoice_id, **{k: v for k, v in arguments.items() if k != "fields"})
 
             elif name == "update_invoice_line":
                 invoice_id = arguments.pop("invoice_id")
                 line_id = arguments.pop("line_id")
-                result = await client.update_invoice_line(invoice_id, line_id, **arguments)
+                result = await client.update_invoice_line(invoice_id, line_id, **{k: v for k, v in arguments.items() if k != "fields"})
 
             elif name == "delete_invoice_line":
                 invoice_id = arguments.pop("invoice_id")
@@ -1303,52 +1380,48 @@ async def handle_call_tool(name: str, arguments: dict):
 
             elif name == "validate_invoice":
                 invoice_id = arguments.pop("invoice_id")
-                result = await client.validate_invoice(invoice_id, **arguments)
-            
+                result = await client.validate_invoice(invoice_id, **{k: v for k, v in arguments.items() if k != "fields"})
+
             # Order Management
             elif name == "get_orders":
-                result = await client.get_orders(
-                    limit=arguments.get('limit', 100),
-                    status=arguments.get('status')
-                )
-            
+                lk = _extract_list_kwargs(arguments, config)
+                result = await client.get_orders(**lk, status=arguments.get('status'), properties=properties)
+
             elif name == "get_order_by_id":
                 result = await client.get_order_by_id(arguments['order_id'])
-            
+
             elif name == "create_order":
-                result = await client.create_order(**arguments)
-            
+                result = await client.create_order(**{k: v for k, v in arguments.items() if k != "fields"})
+
             elif name == "update_order":
                 order_id = arguments.pop('order_id')
-                result = await client.update_order(order_id, **arguments)
-            
+                result = await client.update_order(order_id, **{k: v for k, v in arguments.items() if k != "fields"})
+
             elif name == "delete_order":
                 result = await client.delete_order(arguments['order_id'])
-            
+
             # Contact Management
             elif name == "get_contacts":
-                result = await client.get_contacts(limit=arguments.get('limit', 100))
-            
+                lk = _extract_list_kwargs(arguments, config)
+                result = await client.get_contacts(**lk, properties=properties)
+
             elif name == "get_contact_by_id":
                 result = await client.get_contact_by_id(arguments['contact_id'])
-            
+
             elif name == "create_contact":
-                result = await client.create_contact(**arguments)
-            
+                result = await client.create_contact(**{k: v for k, v in arguments.items() if k != "fields"})
+
             elif name == "update_contact":
                 contact_id = arguments.pop('contact_id')
-                result = await client.update_contact(contact_id, **arguments)
-            
+                result = await client.update_contact(contact_id, **{k: v for k, v in arguments.items() if k != "fields"})
+
             elif name == "delete_contact":
                 result = await client.delete_contact(arguments['contact_id'])
-            
+
             # Project Management
             elif name == "get_projects":
-                result = await client.get_projects(
-                    limit=arguments.get("limit", 100),
-                    page=arguments.get("page", 1),
-                    status=arguments.get("status")
-                )
+                lk = _extract_list_kwargs(arguments, config)
+                result = await client.get_projects(**lk, status=arguments.get("status"), properties=properties)
 
             elif name == "get_project_by_id":
                 result = await client.get_project_by_id(arguments["project_id"])
@@ -1357,14 +1430,14 @@ async def handle_call_tool(name: str, arguments: dict):
                 query = _escape_sqlfilter(arguments["query"])
                 limit = arguments.get("limit", 20)
                 sqlfilters = f"((t.ref:like:'%{query}%') OR (t.title:like:'%{query}%'))"
-                result = await client.search_projects(sqlfilters=sqlfilters, limit=limit)
+                result = await client.search_projects(sqlfilters=sqlfilters, limit=limit, properties=properties)
 
             elif name == "create_project":
-                result = await client.create_project(**arguments)
+                result = await client.create_project(**{k: v for k, v in arguments.items() if k != "fields"})
 
             elif name == "update_project":
                 project_id = arguments.pop("project_id")
-                result = await client.update_project(project_id, **arguments)
+                result = await client.update_project(project_id, **{k: v for k, v in arguments.items() if k != "fields"})
 
             elif name == "delete_project":
                 result = await client.delete_project(arguments["project_id"])
@@ -1372,12 +1445,17 @@ async def handle_call_tool(name: str, arguments: dict):
             # Raw API Access
             elif name == "dolibarr_raw_api":
                 result = await client.dolibarr_raw_api(**arguments)
-            
+
             else:
                 result = {"error": f"Unknown tool: {name}"}
-        
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
-    
+
+        return format_response(
+            result,
+            tool_name=name,
+            arguments=arguments,
+            max_response_chars=config.max_response_chars,
+        )
+
     except DolibarrAPIError as e:
         error_payload = e.response_data or {
             "error": "Dolibarr API Error",
@@ -1385,8 +1463,8 @@ async def handle_call_tool(name: str, arguments: dict):
             "message": str(e),
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
-        return [TextContent(type="text", text=json.dumps(error_payload, indent=2))]
-    
+        return [TextContent(type="text", text=json.dumps(error_payload, separators=(",", ":")))]
+
     except Exception as e:
         correlation_id = str(uuid.uuid4())
         error_result = {
@@ -1396,8 +1474,8 @@ async def handle_call_tool(name: str, arguments: dict):
             "correlation_id": correlation_id,
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
-        print(f"🔥 Tool execution error ({correlation_id}): {e}", file=sys.stderr)  # Debug logging
-        return [TextContent(type="text", text=json.dumps(error_result, indent=2))]
+        print(f"Tool execution error ({correlation_id}): {e}", file=sys.stderr)
+        return [TextContent(type="text", text=json.dumps(error_result, separators=(",", ":")))]
 
 
 @asynccontextmanager
