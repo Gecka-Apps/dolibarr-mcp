@@ -88,6 +88,42 @@ class Config(BaseSettings):
         default=20,
     )
 
+    # Optional database connection for analytics queries
+    db_host: str = Field(
+        description="MySQL/MariaDB host for analytics queries",
+        default="",
+    )
+
+    db_port: int = Field(
+        description="MySQL/MariaDB port",
+        default=3306,
+    )
+
+    db_name: str = Field(
+        description="Dolibarr database name",
+        default="",
+    )
+
+    db_user: str = Field(
+        description="Database user",
+        default="",
+    )
+
+    db_password: str = Field(
+        description="Database password",
+        default="",
+    )
+
+    db_prefix: str = Field(
+        description="Dolibarr table prefix",
+        default="llx_",
+    )
+
+    @property
+    def db_available(self) -> bool:
+        """Whether database connection is configured."""
+        return bool(self.db_host and self.db_name and self.db_user)
+
     @field_validator("dolibarr_url")
     @classmethod
     def validate_dolibarr_url(cls, v: str) -> str:

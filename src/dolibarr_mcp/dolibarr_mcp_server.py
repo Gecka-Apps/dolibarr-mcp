@@ -19,6 +19,12 @@ from mcp.types import Tool, TextContent
 from .config import Config
 from .dolibarr_client import DolibarrClient, DolibarrAPIError
 from .response_shaper import format_response, get_properties_param, TOOL_RESPONSE_CONFIG
+from .analytics import (
+    get_top_selling_products,
+    get_sales_summary,
+    get_low_stock_products,
+    AnalyticsUnavailableError,
+)
 
 # HTTP transport imports
 from starlette.applications import Starlette
@@ -1268,6 +1274,85 @@ async def handle_list_tools():
             },
         ),
 
+        # Analytics (requires database connection)
+        Tool(
+            name="get_top_selling_products",
+            description=(
+                "Get the top selling products ranked by quantity sold in invoices. "
+                "Requires database connection (DB_HOST, DB_NAME, DB_USER, DB_PASSWORD in .env). "
+                "Can be filtered by category and time period."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "period_months": {
+                        "type": "integer",
+                        "description": "Number of months to look back (default: 12)",
+                        "default": 12,
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Number of top products to return (default: 20)",
+                        "default": 20,
+                    },
+                    "category_id": {
+                        "type": "integer",
+                        "description": "Optional category ID to filter products",
+                    },
+                },
+                "additionalProperties": False,
+            },
+        ),
+        Tool(
+            name="get_sales_summary",
+            description=(
+                "Get a sales summary with totals grouped by month or year. "
+                "Requires database connection. "
+                "Shows number of invoices, customers, and revenue per period."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "period_months": {
+                        "type": "integer",
+                        "description": "Number of months to look back (default: 12)",
+                        "default": 12,
+                    },
+                    "group_by": {
+                        "type": "string",
+                        "enum": ["month", "year"],
+                        "description": "Group results by month or year (default: month)",
+                        "default": "month",
+                    },
+                },
+                "additionalProperties": False,
+            },
+        ),
+        Tool(
+            name="get_low_stock_products",
+            description=(
+                "Get products with stock at or below their alert threshold. "
+                "Requires database connection. "
+                "Only returns physical products (not services) that are active for sale."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "description": "Number of products to return (default: 20)",
+                        "default": 20,
+                    },
+                    "include_zero_stock": {
+                        "type": "boolean",
+                        "description": "Include products with zero stock (default: true)",
+                        "default": True,
+                    },
+                },
+                "additionalProperties": False,
+            },
+        ),
+
         # Raw API Access
         Tool(
             name="dolibarr_raw_api",
@@ -1573,6 +1658,29 @@ async def handle_call_tool(name: str, arguments: dict):
             elif name == "get_product_categories":
                 result = await client.get_product_categories(arguments["product_id"])
 
+            # Analytics
+            elif name == "get_top_selling_products":
+                result = await get_top_selling_products(
+                    config,
+                    period_months=arguments.get("period_months", 12),
+                    limit=arguments.get("limit", 20),
+                    category_id=arguments.get("category_id"),
+                )
+
+            elif name == "get_sales_summary":
+                result = await get_sales_summary(
+                    config,
+                    period_months=arguments.get("period_months", 12),
+                    group_by=arguments.get("group_by", "month"),
+                )
+
+            elif name == "get_low_stock_products":
+                result = await get_low_stock_products(
+                    config,
+                    limit=arguments.get("limit", 20),
+                    include_zero_stock=arguments.get("include_zero_stock", True),
+                )
+
             # Raw API Access
             elif name == "dolibarr_raw_api":
                 result = await client.dolibarr_raw_api(**arguments)
@@ -1586,6 +1694,12 @@ async def handle_call_tool(name: str, arguments: dict):
             arguments=arguments,
             max_response_chars=config.max_response_chars,
         )
+
+    except AnalyticsUnavailableError as e:
+        return [TextContent(type="text", text=json.dumps(
+            {"error": "Analytics Unavailable", "message": str(e)},
+            separators=(",", ":"),
+        ))]
 
     except DolibarrAPIError as e:
         error_payload = e.response_data or {
