@@ -78,6 +78,16 @@ class Config(BaseSettings):
         default=0.5,
     )
 
+    max_response_chars: int = Field(
+        description="Maximum characters in MCP tool responses before truncation",
+        default=100_000,
+    )
+
+    default_list_limit: int = Field(
+        description="Default number of items for list operations",
+        default=20,
+    )
+
     @field_validator("dolibarr_url")
     @classmethod
     def validate_dolibarr_url(cls, v: str) -> str:
