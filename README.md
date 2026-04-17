@@ -100,6 +100,7 @@ overwritten by `git pull` on your server.
 | `MCP_HTTP_HOST` | Host/interface to bind when using HTTP transport (default `0.0.0.0`). |
 | `MCP_HTTP_PORT` | Port to bind when using HTTP transport (default `8080`). |
 | `MCP_HOST_PORT` | Optional host port to publish in Docker Compose (default `18004`). |
+| `MCP_URL_TOKEN` | Optional shared secret. When set, every HTTP request must include it as the first path segment (e.g. `http://host:8080/<TOKEN>/`), otherwise the server returns `404`. Useful when the reverse proxy cannot provide Basic Auth (Claude Desktop). Generate with `openssl rand -hex 32`. |
 | `MCP_CONTAINER_NAME` | Optional Docker Compose container name (default `dolibarr-mcp-server`). |
 | `MCP_NETWORK_NAME` | Optional Docker Compose network name (default `dolibarr-mcp-net`). |
 | `MCP_NETWORK_EXTERNAL` | Set to `true` to reuse an existing Docker network (default `false`). |

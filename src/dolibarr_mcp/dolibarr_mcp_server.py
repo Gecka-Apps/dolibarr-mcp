@@ -1786,6 +1786,37 @@ async def _run_stdio_server(_config: Config) -> None:
         )
 
 
+class _UrlTokenMiddleware:
+    """Require a shared secret as the first path segment, then strip it.
+
+    Requests that do not match return 404 (not 401) to avoid leaking the
+    existence of a valid endpoint to scanners.
+    """
+
+    def __init__(self, app, token: str):
+        self.app = app
+        self.prefix = f"/{token}"
+        self.prefix_bytes = self.prefix.encode("latin-1")
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+        if path != self.prefix and not path.startswith(self.prefix + "/"):
+            await Response(status_code=404)(scope, receive, send)
+            return
+
+        new_scope = dict(scope)
+        new_scope["path"] = path[len(self.prefix):] or "/"
+        raw_path = scope.get("raw_path")
+        if raw_path:
+            if raw_path.startswith(self.prefix_bytes):
+                new_scope["raw_path"] = raw_path[len(self.prefix_bytes):] or b"/"
+        await self.app(new_scope, receive, send)
+
+
 def _build_http_app(session_manager: StreamableHTTPSessionManager) -> Starlette:
     """Create Starlette app that forwards to the StreamableHTTP session manager."""
 
@@ -1845,6 +1876,9 @@ async def _run_http_server(config: Config) -> None:
     """Run the MCP server over HTTP (StreamableHTTP)."""
     session_manager = StreamableHTTPSessionManager(server, json_response=False, stateless=False)
     app = _build_http_app(session_manager)
+    if config.mcp_url_token:
+        app = _UrlTokenMiddleware(app, config.mcp_url_token)
+        print("🔒 URL token auth enabled — requests must include the secret path prefix", file=sys.stderr)
     print(
         f"🌐 Starting MCP HTTP server on {config.mcp_http_host}:{config.mcp_http_port}",
         file=sys.stderr,

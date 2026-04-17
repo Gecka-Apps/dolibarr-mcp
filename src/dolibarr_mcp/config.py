@@ -53,6 +53,11 @@ class Config(BaseSettings):
         default=8080,
     )
 
+    mcp_url_token: str = Field(
+        description="If set, require this token as the first path segment of every HTTP request (acts as a shared URL secret). Empty disables the check.",
+        default="",
+    )
+
     allow_ref_autogen: bool = Field(
         description="Allow automatic generation of reference fields when missing",
         default=False,

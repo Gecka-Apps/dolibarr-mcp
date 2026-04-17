@@ -22,6 +22,10 @@ services:
       MCP_SERVER_NAME: dolibarr-mcp
       MCP_SERVER_VERSION: 1.2.0
 
+      # Optional: require this token as the first URL path segment
+      # (used when the reverse proxy can't do Basic Auth — e.g. Claude Desktop)
+      MCP_URL_TOKEN: ${MCP_URL_TOKEN:-}
+
       # Database connection (optional, enables analytics tools)
       DB_HOST: ${DB_HOST:-}
       DB_PORT: ${DB_PORT:-3306}
