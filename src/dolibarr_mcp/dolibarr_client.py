@@ -1023,6 +1023,119 @@ class DolibarrClient:
         return await self.request("DELETE", f"orders/{order_id}/lines/{line_id}")
 
     # ============================================================================
+    # PROPOSAL (QUOTE / DEVIS) MANAGEMENT
+    # ============================================================================
+
+    async def get_proposals(
+        self,
+        limit: int = 100,
+        page: int = 1,
+        status: Optional[int] = None,
+        sortfield: Optional[str] = None,
+        sortorder: Optional[str] = None,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get list of proposals (fk_statut: 0 draft, 1 open, 2 signed, 3 declined, 4 billed)."""
+        params: Dict[str, Any] = {"limit": limit}
+        if status is not None:
+            params["sqlfilters"] = f"(t.fk_statut:=:{status})"
+        self._add_list_params(params, page=page, sortfield=sortfield, sortorder=sortorder, properties=properties)
+        result = await self.request("GET", "proposals", params=params)
+        return result if isinstance(result, list) else []
+
+    async def get_proposal_by_id(self, proposal_id: int) -> Dict[str, Any]:
+        """Get a specific proposal by ID, including its lines."""
+        return await self.request("GET", f"proposals/{proposal_id}")
+
+    async def create_proposal(self, data: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
+        """Create a new proposal (draft)."""
+        payload = self._merge_payload(data, **kwargs)
+        if "customer_id" in payload and "socid" not in payload:
+            payload["socid"] = payload.pop("customer_id")
+        if "project_id" in payload and "fk_projet" not in payload:
+            payload["fk_projet"] = payload.pop("project_id")
+        if isinstance(payload.get("lines"), list):
+            for line in payload["lines"]:
+                if isinstance(line, dict) and "product_id" in line and "fk_product" not in line:
+                    line["fk_product"] = line.pop("product_id")
+        payload = self._validate_payload(endpoint="proposals", payload=payload, required_fields=["socid"])
+        result = await self.request("POST", "proposals", data=payload)
+        return self._extract_identifier(result)
+
+    async def update_proposal(self, proposal_id: int, data: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
+        """Update an existing proposal (draft only)."""
+        payload = self._merge_payload(data, **kwargs)
+        if "project_id" in payload and "fk_projet" not in payload:
+            payload["fk_projet"] = payload.pop("project_id")
+        return await self.request("PUT", f"proposals/{proposal_id}", data=payload)
+
+    async def delete_proposal(self, proposal_id: int) -> Dict[str, Any]:
+        """Delete a proposal."""
+        return await self.request("DELETE", f"proposals/{proposal_id}")
+
+    async def add_proposal_line(self, proposal_id: int, data: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
+        """Add a line to a proposal.
+
+        Uses the singular POST {id}/line route: the plural /lines route expects an
+        array of lines and silently creates a blank line when given a single dict.
+        """
+        payload = self._merge_payload(data, **kwargs)
+        if "product_id" in payload:
+            payload["fk_product"] = payload.pop("product_id")
+        return await self.request("POST", f"proposals/{proposal_id}/line", data=payload)
+
+    async def update_proposal_line(
+        self,
+        proposal_id: int,
+        line_id: int,
+        data: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Update a proposal line, preserving fields that are not provided."""
+        updates = self._merge_payload(data, **kwargs)
+        if "product_id" in updates:
+            updates["fk_product"] = updates.pop("product_id")
+        payload = updates
+        proposal = await self.get_proposal_by_id(proposal_id)
+        lines = proposal.get("lines", []) if isinstance(proposal, dict) else []
+        current = next(
+            (l for l in lines if str(l.get("id") or l.get("rowid")) == str(line_id)),
+            None,
+        )
+        if current is not None:
+            preserved = ("desc", "subprice", "qty", "tva_tx", "product_type", "fk_product", "remise_percent")
+            base = {k: current[k] for k in preserved if current.get(k) is not None}
+            base.update(updates)
+            payload = base
+        return await self.request("PUT", f"proposals/{proposal_id}/lines/{line_id}", data=payload)
+
+    async def delete_proposal_line(self, proposal_id: int, line_id: int) -> Dict[str, Any]:
+        """Delete a line from a proposal."""
+        return await self.request("DELETE", f"proposals/{proposal_id}/lines/{line_id}")
+
+    async def validate_proposal(self, proposal_id: int) -> Dict[str, Any]:
+        """Validate a proposal (draft -> open), assigning its ref."""
+        return await self.request("POST", f"proposals/{proposal_id}/validate", data={})
+
+    async def sign_proposal(self, proposal_id: int, note: Optional[str] = None) -> Dict[str, Any]:
+        """Sign a proposal (open -> signed / accepted).
+
+        The close route takes the target status in the body (status 2 = signed).
+        """
+        payload: Dict[str, Any] = {"status": 2}
+        if note:
+            payload["note_private"] = note
+        return await self.request("POST", f"proposals/{proposal_id}/close", data=payload)
+
+    async def convert_proposal_to_order(self, proposal_id: int) -> Dict[str, Any]:
+        """Convert a signed proposal into a customer order; returns the new order id.
+
+        Conversion lives on the orders API (POST /orders/createfromproposal/{id}).
+        """
+        result = await self.request("POST", f"orders/createfromproposal/{proposal_id}", data={})
+        return self._extract_identifier(result)
+
+    # ============================================================================
     # CONTACT MANAGEMENT
     # ============================================================================
     

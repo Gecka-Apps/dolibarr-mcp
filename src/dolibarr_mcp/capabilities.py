@@ -74,6 +74,18 @@ TOOL_PERMISSIONS: dict[str, list[str]] = {
     "search_invoices": ["facture.lire"],
     "set_invoice_to_draft": ["facture.creer"],
     "add_payment_to_invoice": ["facture.paiement"],
+    # Proposals (quotes / devis). rights_class is `propale` in the catalogue.
+    "get_proposals": ["propale.lire"],
+    "get_proposal_by_id": ["propale.lire"],
+    "create_proposal": ["propale.creer"],
+    "update_proposal": ["propale.creer"],
+    "delete_proposal": ["propale.supprimer"],
+    "add_proposal_line": ["propale.creer"],
+    "update_proposal_line": ["propale.creer"],
+    "delete_proposal_line": ["propale.creer"],
+    "validate_proposal": ["propale.creer"],
+    "sign_proposal": ["propale.creer"],
+    "convert_proposal_to_order": ["propale.creer"],
     # Orders.
     "get_orders": ["commande.lire"],
     "get_order_by_id": ["commande.lire"],

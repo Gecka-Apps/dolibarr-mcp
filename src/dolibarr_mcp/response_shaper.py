@@ -64,6 +64,17 @@ ENTITY_FIELD_SETS: Dict[str, Dict[str, Optional[List[str]]]] = {
         ],
         "full": None,
     },
+    "proposal": {
+        "summary": [
+            "id", "ref", "socid", "date", "total_ht", "total_ttc", "status",
+        ],
+        "standard": [
+            "id", "ref", "ref_ext", "socid", "date", "fin_validite",
+            "total_ht", "total_tva", "total_ttc", "status", "fk_projet",
+            "note_public", "lines", "date_creation", "date_modification",
+        ],
+        "full": None,
+    },
     "customer": {
         "summary": [
             "id", "nom", "name_alias", "email", "phone", "status", "client",
@@ -156,6 +167,7 @@ TOOL_RESPONSE_CONFIG: Dict[str, Dict[str, Any]] = {
     "get_invoices":  {"entity_type": "invoice",  "field_set": "summary", "is_list": True},
     "search_invoices": {"entity_type": "invoice", "field_set": "summary", "is_list": True},
     "get_orders":    {"entity_type": "order",    "field_set": "summary", "is_list": True},
+    "get_proposals": {"entity_type": "proposal", "field_set": "summary", "is_list": True},
     "get_contacts":  {"entity_type": "contact",  "field_set": "summary", "is_list": True},
     "get_projects":  {"entity_type": "project",  "field_set": "summary", "is_list": True},
 
@@ -177,6 +189,7 @@ TOOL_RESPONSE_CONFIG: Dict[str, Dict[str, Any]] = {
     "get_product_by_id":  {"entity_type": "product",  "field_set": "full", "is_list": False},
     "get_invoice_by_id":  {"entity_type": "invoice",  "field_set": "full", "is_list": False},
     "get_order_by_id":    {"entity_type": "order",    "field_set": "full", "is_list": False},
+    "get_proposal_by_id": {"entity_type": "proposal", "field_set": "full", "is_list": False},
     "get_contact_by_id":  {"entity_type": "contact",  "field_set": "full", "is_list": False},
     "get_project_by_id":  {"entity_type": "project",  "field_set": "full", "is_list": False},
 }
