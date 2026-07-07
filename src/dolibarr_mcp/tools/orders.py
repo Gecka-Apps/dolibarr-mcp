@@ -113,6 +113,56 @@ TOOLS: list[Tool] = [
             "additionalProperties": False,
         },
     ),
+    Tool(
+        name="add_order_line",
+        description="Add a line item to an existing customer order.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "order_id": {"type": "integer", "description": "Order ID"},
+                "desc": {"type": "string", "description": "Line description"},
+                "qty": {"type": "number", "description": "Quantity"},
+                "subprice": {"type": "number", "description": "Unit price (net / HT)"},
+                "product_id": {"type": "integer", "description": "Product ID (optional)"},
+                "product_type": {"type": "integer", "description": "0=Product, 1=Service", "default": 0},
+                "tva_tx": {"type": "number", "description": "VAT rate, e.g. 20.0 (optional)"},
+            },
+            "required": ["order_id", "desc", "qty", "subprice"],
+            "additionalProperties": False,
+        },
+    ),
+    Tool(
+        name="update_order_line",
+        description="Update a line in a customer order (unprovided fields are preserved).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "order_id": {"type": "integer", "description": "Order ID"},
+                "line_id": {"type": "integer", "description": "Order line ID"},
+                "desc": {"type": "string", "description": "Line description"},
+                "qty": {"type": "number", "description": "Quantity"},
+                "subprice": {"type": "number", "description": "Unit price (net / HT)"},
+                "product_id": {"type": "integer", "description": "Product ID"},
+                "product_type": {"type": "integer", "description": "0=Product, 1=Service"},
+                "tva_tx": {"type": "number", "description": "VAT rate, e.g. 20.0"},
+            },
+            "required": ["order_id", "line_id"],
+            "additionalProperties": False,
+        },
+    ),
+    Tool(
+        name="delete_order_line",
+        description="Delete a line from a customer order.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "order_id": {"type": "integer", "description": "Order ID"},
+                "line_id": {"type": "integer", "description": "Order line ID"},
+            },
+            "required": ["order_id", "line_id"],
+            "additionalProperties": False,
+        },
+    ),
 ]
 
 
@@ -139,10 +189,30 @@ async def delete_order(ctx: ToolContext):
     return await ctx.client.delete_order(ctx.arguments['order_id'])
 
 
+async def add_order_line(ctx: ToolContext):
+    args = dict(ctx.arguments)
+    order_id = args.pop('order_id')
+    return await ctx.client.add_order_line(order_id, **{k: v for k, v in args.items() if k != "fields"})
+
+
+async def update_order_line(ctx: ToolContext):
+    args = dict(ctx.arguments)
+    order_id = args.pop('order_id')
+    line_id = args.pop('line_id')
+    return await ctx.client.update_order_line(order_id, line_id, **{k: v for k, v in args.items() if k != "fields"})
+
+
+async def delete_order_line(ctx: ToolContext):
+    return await ctx.client.delete_order_line(ctx.arguments['order_id'], ctx.arguments['line_id'])
+
+
 HANDLERS = {
     "get_orders": get_orders,
     "get_order_by_id": get_order_by_id,
     "create_order": create_order,
     "update_order": update_order,
     "delete_order": delete_order,
+    "add_order_line": add_order_line,
+    "update_order_line": update_order_line,
+    "delete_order_line": delete_order_line,
 }

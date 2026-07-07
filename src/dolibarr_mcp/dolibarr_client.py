@@ -862,7 +862,52 @@ class DolibarrClient:
     async def delete_order(self, order_id: int) -> Dict[str, Any]:
         """Delete an order."""
         return await self.request("DELETE", f"orders/{order_id}")
-    
+
+    async def add_order_line(
+        self,
+        order_id: int,
+        data: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Add a line to a customer order."""
+        payload = self._merge_payload(data, **kwargs)
+        if "product_id" in payload:
+            payload["fk_product"] = payload.pop("product_id")
+        return await self.request("POST", f"orders/{order_id}/lines", data=payload)
+
+    async def update_order_line(
+        self,
+        order_id: int,
+        line_id: int,
+        data: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Update an order line, preserving fields that are not provided.
+
+        Like invoice lines, Dolibarr's order line PUT is a full replace, so we
+        fetch the current line and overlay only the provided values.
+        """
+        updates = self._merge_payload(data, **kwargs)
+        if "product_id" in updates:
+            updates["fk_product"] = updates.pop("product_id")
+        payload = updates
+        order = await self.get_order_by_id(order_id)
+        lines = order.get("lines", []) if isinstance(order, dict) else []
+        current = next(
+            (l for l in lines if str(l.get("id") or l.get("rowid")) == str(line_id)),
+            None,
+        )
+        if current is not None:
+            preserved = ("desc", "subprice", "qty", "tva_tx", "product_type", "fk_product", "remise_percent")
+            base = {k: current[k] for k in preserved if current.get(k) is not None}
+            base.update(updates)
+            payload = base
+        return await self.request("PUT", f"orders/{order_id}/lines/{line_id}", data=payload)
+
+    async def delete_order_line(self, order_id: int, line_id: int) -> Dict[str, Any]:
+        """Delete a line from a customer order."""
+        return await self.request("DELETE", f"orders/{order_id}/lines/{line_id}")
+
     # ============================================================================
     # CONTACT MANAGEMENT
     # ============================================================================

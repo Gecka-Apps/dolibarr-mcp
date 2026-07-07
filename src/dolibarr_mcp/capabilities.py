@@ -75,6 +75,10 @@ TOOL_PERMISSIONS: dict[str, list[str]] = {
     "create_order": ["commande.creer"],
     "update_order": ["commande.creer"],
     "delete_order": ["commande.supprimer"],
+    # Line edits modify the order, gated like order creation (as invoice lines are).
+    "add_order_line": ["commande.creer"],
+    "update_order_line": ["commande.creer"],
+    "delete_order_line": ["commande.creer"],
     # Contacts (nested under the societe module).
     "get_contacts": ["societe.contact.lire"],
     "get_contact_by_id": ["societe.contact.lire"],
