@@ -321,6 +321,65 @@ TOOLS: list[Tool] = [
             "additionalProperties": False,
         },
     ),
+    Tool(
+        name="search_invoices",
+        description=(
+            "Search invoices by customer and/or status, server-side filtered. Prefer this over "
+            "get_invoices when looking for a specific customer's invoices or a given status."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "customer_id": {"type": "integer", "description": "Customer ID (Dolibarr socid) to filter by"},
+                "status": {
+                    "type": "integer",
+                    "enum": [0, 1, 2, 3],
+                    "description": "Invoice status: 0=draft, 1=unpaid/validated, 2=paid, 3=abandoned",
+                },
+                "limit": {"type": "integer", "description": "Maximum number of results (default 20)", "default": 20},
+                "fields": {"type": "string", "description": "Comma-separated fields to return"},
+            },
+            "additionalProperties": False,
+        },
+    ),
+    Tool(
+        name="set_invoice_to_draft",
+        description="Revert a validated invoice back to draft so its lines can be edited, then re-validated.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "invoice_id": {"type": "integer", "description": "Invoice ID"},
+                "idwarehouse": {
+                    "type": "integer",
+                    "description": "Warehouse for stock movement; -1 (default) means no stock movement",
+                    "default": -1,
+                },
+            },
+            "required": ["invoice_id"],
+            "additionalProperties": False,
+        },
+    ),
+    Tool(
+        name="add_payment_to_invoice",
+        description=(
+            "Register a payment for the full remaining amount of an invoice. The bank account and "
+            "payment mode are resolved automatically when omitted (single bank account, wire-transfer "
+            "mode); if the choice is ambiguous the tool returns an error listing the options."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "invoice_id": {"type": "integer", "description": "Invoice ID"},
+                "date": {"type": "string", "description": "Payment date (YYYY-MM-DD)"},
+                "payment_mode_id": {"type": "integer", "description": "Payment type id (optional; defaults to wire transfer)"},
+                "account_id": {"type": "integer", "description": "Bank account id (optional; defaults to the single configured account)"},
+                "num_payment": {"type": "string", "description": "Payment reference/number (optional)"},
+                "close_paid": {"type": "boolean", "description": "Mark the invoice as paid if fully covered (default true)", "default": True},
+            },
+            "required": ["invoice_id", "date"],
+            "additionalProperties": False,
+        },
+    ),
 ]
 
 
@@ -389,6 +448,27 @@ async def validate_invoice(ctx: ToolContext):
     return await ctx.client.validate_invoice(invoice_id, **{k: v for k, v in args.items() if k != "fields"})
 
 
+async def search_invoices(ctx: ToolContext):
+    return await ctx.client.search_invoices(
+        customer_id=ctx.arguments.get("customer_id"),
+        status=ctx.arguments.get("status"),
+        limit=ctx.arguments.get("limit", 20),
+        properties=ctx.properties,
+    )
+
+
+async def set_invoice_to_draft(ctx: ToolContext):
+    args = dict(ctx.arguments)
+    invoice_id = args.pop("invoice_id")
+    return await ctx.client.set_invoice_to_draft(invoice_id, **{k: v for k, v in args.items() if k != "fields"})
+
+
+async def add_payment_to_invoice(ctx: ToolContext):
+    args = dict(ctx.arguments)
+    invoice_id = args.pop("invoice_id")
+    return await ctx.client.add_payment_to_invoice(invoice_id, **{k: v for k, v in args.items() if k != "fields"})
+
+
 HANDLERS = {
     "get_invoices": get_invoices,
     "get_invoice_by_id": get_invoice_by_id,
@@ -401,4 +481,7 @@ HANDLERS = {
     "delete_invoice_line": delete_invoice_line,
     "set_invoice_project": set_invoice_project,
     "validate_invoice": validate_invoice,
+    "search_invoices": search_invoices,
+    "set_invoice_to_draft": set_invoice_to_draft,
+    "add_payment_to_invoice": add_payment_to_invoice,
 }

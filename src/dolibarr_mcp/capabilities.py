@@ -71,6 +71,9 @@ TOOL_PERMISSIONS: dict[str, list[str]] = {
     "delete_invoice_line": ["facture.creer"],
     "set_invoice_project": ["facture.creer"],
     "validate_invoice": ["facture.creer"],
+    "search_invoices": ["facture.lire"],
+    "set_invoice_to_draft": ["facture.creer"],
+    "add_payment_to_invoice": ["facture.paiement"],
     # Orders.
     "get_orders": ["commande.lire"],
     "get_order_by_id": ["commande.lire"],

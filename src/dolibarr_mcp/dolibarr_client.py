@@ -853,7 +853,81 @@ class DolibarrClient:
             "not_trigger": not_trigger
         }
         return await self.request("POST", f"invoices/{invoice_id}/validate", data=payload)
-    
+
+    async def search_invoices(
+        self,
+        customer_id: Optional[int] = None,
+        status: Optional[int] = None,
+        limit: int = 20,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Search invoices by customer and/or status (fk_statut: 0 draft, 1 unpaid, 2 paid, 3 abandoned)."""
+        filters = []
+        if customer_id is not None:
+            filters.append(f"(t.fk_soc:=:{customer_id})")
+        if status is not None:
+            filters.append(f"(t.fk_statut:=:{status})")
+        params: Dict[str, Any] = {"limit": limit, "sortfield": "t.rowid", "sortorder": "DESC"}
+        if filters:
+            params["sqlfilters"] = " and ".join(filters)
+        if properties:
+            params["properties"] = properties
+        result = await self.request("GET", "invoices", params=params)
+        return result if isinstance(result, list) else []
+
+    async def set_invoice_to_draft(self, invoice_id: int, idwarehouse: int = -1) -> Dict[str, Any]:
+        """Revert a validated invoice back to draft (idwarehouse=-1 = no stock movement)."""
+        return await self.request("POST", f"invoices/{invoice_id}/settodraft", data={"idwarehouse": idwarehouse})
+
+    async def get_bank_accounts(self) -> List[Dict[str, Any]]:
+        """List the Dolibarr bank accounts."""
+        result = await self.request("GET", "bankaccounts", params={"limit": 100})
+        return result if isinstance(result, list) else []
+
+    async def get_payment_modes(self) -> List[Dict[str, Any]]:
+        """List the payment types from Dolibarr's dictionary."""
+        result = await self.request("GET", "setup/dictionary/payment_types", params={"limit": 100})
+        return result if isinstance(result, list) else []
+
+    async def add_payment_to_invoice(
+        self,
+        invoice_id: int,
+        date: str,
+        payment_mode_id: Optional[int] = None,
+        account_id: Optional[int] = None,
+        num_payment: str = "",
+        close_paid: bool = True,
+    ) -> Dict[str, Any]:
+        """Register a payment for the full remaining amount of an invoice.
+
+        Resolves the bank account and payment mode automatically when not given:
+        the single configured bank account, and the wire-transfer ("VIR") payment
+        mode (or the first available). Raises with a clear message when the choice
+        is ambiguous.
+        """
+        if account_id is None:
+            accounts = await self.get_bank_accounts()
+            if not accounts:
+                raise DolibarrAPIError("No bank accounts configured in Dolibarr; set account_id.")
+            if len(accounts) > 1:
+                listing = ", ".join(f"{a.get('id')}: {a.get('label') or a.get('ref')}" for a in accounts)
+                raise DolibarrAPIError(f"Multiple bank accounts; specify account_id. Available: {listing}")
+            account_id = accounts[0].get("id")
+        if payment_mode_id is None:
+            modes = await self.get_payment_modes()
+            if not modes:
+                raise DolibarrAPIError("No payment modes configured in Dolibarr; set payment_mode_id.")
+            chosen = next((m for m in modes if m.get("code") == "VIR"), modes[0])
+            payment_mode_id = chosen.get("id") or chosen.get("rowid")
+        payload = {
+            "datepaye": date,
+            "paymentid": payment_mode_id,
+            "closepaidinvoices": "yes" if close_paid else "no",
+            "accountid": account_id,
+            "num_payment": num_payment or "",
+        }
+        return await self.request("POST", f"invoices/{invoice_id}/payments", data=payload)
+
     # ============================================================================
     # ORDER MANAGEMENT
     # ============================================================================

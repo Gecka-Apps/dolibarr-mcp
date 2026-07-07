@@ -154,6 +154,7 @@ TOOL_RESPONSE_CONFIG: Dict[str, Dict[str, Any]] = {
     "get_customers": {"entity_type": "customer", "field_set": "summary", "is_list": True},
     "get_products":  {"entity_type": "product",  "field_set": "summary", "is_list": True},
     "get_invoices":  {"entity_type": "invoice",  "field_set": "summary", "is_list": True},
+    "search_invoices": {"entity_type": "invoice", "field_set": "summary", "is_list": True},
     "get_orders":    {"entity_type": "order",    "field_set": "summary", "is_list": True},
     "get_contacts":  {"entity_type": "contact",  "field_set": "summary", "is_list": True},
     "get_projects":  {"entity_type": "project",  "field_set": "summary", "is_list": True},
