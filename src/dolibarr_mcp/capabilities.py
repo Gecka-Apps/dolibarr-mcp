@@ -90,6 +90,13 @@ TOOL_PERMISSIONS: dict[str, list[str]] = {
     "validate_proposal": ["propale.creer"],
     "sign_proposal": ["propale.creer"],
     "convert_proposal_to_order": ["propale.creer"],
+    "build_proposal_document": ["propale.lire"],
+    # Supplier (purchase) orders. rights_class is `fournisseur`, sub `commande`.
+    "get_supplier_orders": ["fournisseur.commande.lire"],
+    "get_supplier_order_by_id": ["fournisseur.commande.lire"],
+    "create_supplier_order": ["fournisseur.commande.creer"],
+    "update_supplier_order": ["fournisseur.commande.creer"],
+    "delete_supplier_order": ["fournisseur.commande.supprimer"],
     # Orders.
     "get_orders": ["commande.lire"],
     "get_order_by_id": ["commande.lire"],

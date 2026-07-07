@@ -170,6 +170,20 @@ TOOLS: list[Tool] = [
             "additionalProperties": False,
         },
     ),
+    Tool(
+        name="build_proposal_document",
+        description="Generate (or regenerate) the proposal's PDF/ODT document server-side. The proposal must be validated (have a ref).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "proposal_id": {"type": "integer", "description": "Proposal ID"},
+                "doctemplate": {"type": "string", "description": "Document template name (optional)"},
+                "langcode": {"type": "string", "description": "Language code, e.g. fr_FR (optional)"},
+            },
+            "required": ["proposal_id"],
+            "additionalProperties": False,
+        },
+    ),
 ]
 
 
@@ -225,6 +239,14 @@ async def convert_proposal_to_order(ctx: ToolContext):
     return await ctx.client.convert_proposal_to_order(ctx.arguments["proposal_id"])
 
 
+async def build_proposal_document(ctx: ToolContext):
+    return await ctx.client.build_proposal_document(
+        ctx.arguments["proposal_id"],
+        doctemplate=ctx.arguments.get("doctemplate"),
+        langcode=ctx.arguments.get("langcode"),
+    )
+
+
 HANDLERS = {
     "get_proposals": get_proposals,
     "get_proposal_by_id": get_proposal_by_id,
@@ -237,4 +259,5 @@ HANDLERS = {
     "validate_proposal": validate_proposal,
     "sign_proposal": sign_proposal,
     "convert_proposal_to_order": convert_proposal_to_order,
+    "build_proposal_document": build_proposal_document,
 }

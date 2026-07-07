@@ -24,6 +24,7 @@ from . import (
     projects,
     proposals,
     reference,
+    supplier_orders,
     system,
     users,
 )
@@ -35,6 +36,7 @@ _MODULES = [
     invoices,
     orders,
     proposals,
+    supplier_orders,
     contacts,
     projects,
     categories,

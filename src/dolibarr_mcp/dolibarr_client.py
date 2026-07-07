@@ -1175,6 +1175,81 @@ class DolibarrClient:
         result = await self.request("POST", f"orders/createfromproposal/{proposal_id}", data={})
         return self._extract_identifier(result)
 
+    async def build_proposal_document(
+        self,
+        proposal_id: int,
+        doctemplate: Optional[str] = None,
+        langcode: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """(Re)generate the PDF/ODT document for a proposal server-side."""
+        proposal = await self.get_proposal_by_id(proposal_id)
+        ref = proposal.get("ref") if isinstance(proposal, dict) else None
+        if not ref:
+            raise DolibarrAPIError("Proposal has no ref yet; validate it before building its document.")
+        # Dolibarr strips the extension to resolve the record, so .pdf is a safe default.
+        original_file = (proposal.get("last_main_doc") or f"{ref}/{ref}.pdf")
+        payload: Dict[str, Any] = {"modulepart": "propal", "original_file": original_file}
+        if doctemplate:
+            payload["doctemplate"] = doctemplate
+        if langcode:
+            payload["langcode"] = langcode
+        result = await self.request("PUT", "documents/builddoc", data=payload)
+        # The endpoint returns the file as base64 in `content`; drop it (token-heavy,
+        # would be truncated anyway). The document is generated server-side regardless.
+        if isinstance(result, dict):
+            result = {k: v for k, v in result.items() if k != "content"}
+        return result
+
+    # ============================================================================
+    # SUPPLIER ORDER (PURCHASE ORDER) MANAGEMENT
+    # ============================================================================
+
+    async def get_supplier_orders(
+        self,
+        limit: int = 100,
+        page: int = 1,
+        status: Optional[int] = None,
+        sortfield: Optional[str] = None,
+        sortorder: Optional[str] = None,
+        properties: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get list of supplier (purchase) orders."""
+        params: Dict[str, Any] = {"limit": limit}
+        if status is not None:
+            params["status"] = status
+        self._add_list_params(params, page=page, sortfield=sortfield, sortorder=sortorder, properties=properties)
+        result = await self.request("GET", "supplierorders", params=params)
+        return result if isinstance(result, list) else []
+
+    async def get_supplier_order_by_id(self, order_id: int) -> Dict[str, Any]:
+        """Get a specific supplier order by ID."""
+        return await self.request("GET", f"supplierorders/{order_id}")
+
+    async def create_supplier_order(self, data: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
+        """Create a supplier order. Lines are embedded at creation (no line subresource)."""
+        payload = self._merge_payload(data, **kwargs)
+        if "supplier_id" in payload and "socid" not in payload:
+            payload["socid"] = payload.pop("supplier_id")
+        if isinstance(payload.get("lines"), list):
+            for line in payload["lines"]:
+                if not isinstance(line, dict):
+                    continue
+                if "product_id" in line and "fk_product" not in line:
+                    line["fk_product"] = line.pop("product_id")
+                line.setdefault("product_type", 0)
+        payload = self._validate_payload(endpoint="supplierorders", payload=payload, required_fields=["socid"])
+        result = await self.request("POST", "supplierorders", data=payload)
+        return self._extract_identifier(result)
+
+    async def update_supplier_order(self, order_id: int, data: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
+        """Update a supplier order."""
+        payload = self._merge_payload(data, **kwargs)
+        return await self.request("PUT", f"supplierorders/{order_id}", data=payload)
+
+    async def delete_supplier_order(self, order_id: int) -> Dict[str, Any]:
+        """Delete a supplier order."""
+        return await self.request("DELETE", f"supplierorders/{order_id}")
+
     # ============================================================================
     # CONTACT MANAGEMENT
     # ============================================================================
