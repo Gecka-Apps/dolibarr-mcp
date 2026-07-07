@@ -67,6 +67,42 @@ TOOLS: list[Tool] = [
             "additionalProperties": False,
         },
     ),
+    Tool(
+        name="link_category",
+        description="Link an existing category to an object (product, customer, supplier, contact...).",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "category_id": {"type": "integer", "description": "Category ID"},
+                "object_type": {
+                    "type": "string",
+                    "enum": ["product", "customer", "supplier", "contact", "member", "project"],
+                    "description": "Type of object to tag",
+                },
+                "object_id": {"type": "integer", "description": "ID of the object to tag"},
+            },
+            "required": ["category_id", "object_type", "object_id"],
+            "additionalProperties": False,
+        },
+    ),
+    Tool(
+        name="unlink_category",
+        description="Remove a category link from an object.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "category_id": {"type": "integer", "description": "Category ID"},
+                "object_type": {
+                    "type": "string",
+                    "enum": ["product", "customer", "supplier", "contact", "member", "project"],
+                    "description": "Type of object",
+                },
+                "object_id": {"type": "integer", "description": "ID of the object"},
+            },
+            "required": ["category_id", "object_type", "object_id"],
+            "additionalProperties": False,
+        },
+    ),
 ]
 
 
@@ -89,7 +125,21 @@ async def search_categories(ctx: ToolContext):
     )
 
 
+async def link_category(ctx: ToolContext):
+    return await ctx.client.link_category(
+        ctx.arguments["category_id"], ctx.arguments["object_type"], ctx.arguments["object_id"],
+    )
+
+
+async def unlink_category(ctx: ToolContext):
+    return await ctx.client.unlink_category(
+        ctx.arguments["category_id"], ctx.arguments["object_type"], ctx.arguments["object_id"],
+    )
+
+
 HANDLERS = {
     "get_categories": get_categories,
     "search_categories": search_categories,
+    "link_category": link_category,
+    "unlink_category": unlink_category,
 }

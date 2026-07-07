@@ -113,9 +113,14 @@ TOOL_PERMISSIONS: dict[str, list[str]] = {
     "create_project": ["projet.creer"],
     "update_project": ["projet.creer"],
     "delete_project": ["projet.supprimer"],
+    "get_project_contacts": ["projet.lire"],
+    "add_project_contact": ["projet.creer"],
+    "remove_project_contact": ["projet.creer"],
     # Categories.
     "get_categories": ["categorie.lire"],
     "search_categories": ["categorie.lire"],
+    "link_category": ["categorie.creer"],
+    "unlink_category": ["categorie.creer"],
     "get_products_by_category": ["categorie.lire"],
     "get_product_categories": ["produit.lire"],
     # Analytics run over a direct read-only SQL connection, so Dolibarr rights do

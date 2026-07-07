@@ -106,6 +106,9 @@ TOOLS: list[Tool] = [
                 "address": {"type": "string", "description": "Customer address"},
                 "town": {"type": "string", "description": "City/Town"},
                 "zip": {"type": "string", "description": "Postal code"},
+                "name_alias": {"type": "string", "description": "Alias / commercial name (searched by search_customers)"},
+                "idprof1": {"type": "string", "description": "Business registration number (RIDET in New Caledonia)"},
+                "tva_intra": {"type": "string", "description": "VAT / tax intra number"},
                 "country_id": {
                     "type": "integer",
                     "description": "Country ID (default: 1)",
@@ -142,6 +145,9 @@ TOOLS: list[Tool] = [
                 "address": {"type": "string", "description": "Customer address"},
                 "town": {"type": "string", "description": "City/Town"},
                 "zip": {"type": "string", "description": "Postal code"},
+                "name_alias": {"type": "string", "description": "Alias / commercial name (searched by search_customers)"},
+                "idprof1": {"type": "string", "description": "Business registration number (RIDET in New Caledonia)"},
+                "tva_intra": {"type": "string", "description": "VAT / tax intra number"},
                 "status": {
                     "type": "integer",
                     "description": "Status (1=Active, 0=Inactive)",

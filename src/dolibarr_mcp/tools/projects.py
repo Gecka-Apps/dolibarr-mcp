@@ -129,6 +129,9 @@ TOOLS: list[Tool] = [
                     "type": "integer",
                     "description": "Project status",
                 },
+                "opp_amount": {"type": "number", "description": "Opportunity amount (lead value)"},
+                "opp_percent": {"type": "number", "description": "Opportunity win probability (%)"},
+                "opp_status": {"type": "integer", "description": "Opportunity status id (from the opportunity-status dictionary)"},
             },
             "required": ["project_id"],
             "additionalProperties": False,
@@ -146,6 +149,45 @@ TOOLS: list[Tool] = [
                 }
             },
             "required": ["project_id"],
+            "additionalProperties": False,
+        },
+    ),
+    Tool(
+        name="get_project_contacts",
+        description="List the contacts assigned to a project. Requires Dolibarr 23.0+.",
+        inputSchema={
+            "type": "object",
+            "properties": {"project_id": {"type": "integer", "description": "Project ID"}},
+            "required": ["project_id"],
+            "additionalProperties": False,
+        },
+    ),
+    Tool(
+        name="add_project_contact",
+        description="Assign a contact to a project. Requires Dolibarr 23.0+.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "project_id": {"type": "integer", "description": "Project ID"},
+                "contact_id": {"type": "integer", "description": "Contact/user ID (fk_socpeople)"},
+                "type_contact": {"type": "string", "description": "Role code, e.g. PROJECTLEADER or PROJECTCONTRIBUTOR"},
+                "source": {"type": "string", "enum": ["internal", "external"], "description": "'internal' (Dolibarr user) or 'external' (third-party contact)"},
+            },
+            "required": ["project_id", "contact_id", "type_contact", "source"],
+            "additionalProperties": False,
+        },
+    ),
+    Tool(
+        name="remove_project_contact",
+        description="Unassign a contact from a project. Requires Dolibarr 23.0+.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "project_id": {"type": "integer", "description": "Project ID"},
+                "contact_id": {"type": "integer", "description": "Contact ID"},
+                "type_contact": {"type": "string", "description": "Role code used when assigning"},
+            },
+            "required": ["project_id", "contact_id", "type_contact"],
             "additionalProperties": False,
         },
     ),
@@ -182,6 +224,23 @@ async def delete_project(ctx: ToolContext):
     return await ctx.client.delete_project(ctx.arguments["project_id"])
 
 
+async def get_project_contacts(ctx: ToolContext):
+    return await ctx.client.get_project_contacts(ctx.arguments["project_id"])
+
+
+async def add_project_contact(ctx: ToolContext):
+    return await ctx.client.add_project_contact(
+        ctx.arguments["project_id"], ctx.arguments["contact_id"],
+        ctx.arguments["type_contact"], ctx.arguments["source"],
+    )
+
+
+async def remove_project_contact(ctx: ToolContext):
+    return await ctx.client.remove_project_contact(
+        ctx.arguments["project_id"], ctx.arguments["contact_id"], ctx.arguments["type_contact"],
+    )
+
+
 HANDLERS = {
     "get_projects": get_projects,
     "get_project_by_id": get_project_by_id,
@@ -189,4 +248,7 @@ HANDLERS = {
     "create_project": create_project,
     "update_project": update_project,
     "delete_project": delete_project,
+    "get_project_contacts": get_project_contacts,
+    "add_project_contact": add_project_contact,
+    "remove_project_contact": remove_project_contact,
 }

@@ -1284,6 +1284,26 @@ class DolibarrClient:
         """Delete a project."""
         return await self.request("DELETE", f"projects/{project_id}")
 
+    async def get_project_contacts(self, project_id: int) -> List[Dict[str, Any]]:
+        """List the contacts assigned to a project. Requires Dolibarr 23.0+."""
+        result = await self.request("GET", f"projects/{project_id}/contacts")
+        return result if isinstance(result, list) else []
+
+    async def add_project_contact(
+        self,
+        project_id: int,
+        contact_id: int,
+        type_contact: str,
+        source: str,
+    ) -> Dict[str, Any]:
+        """Assign a contact to a project (source 'internal'=user, 'external'=third-party contact). Requires Dolibarr 23.0+."""
+        payload = {"fk_socpeople": contact_id, "type_contact": type_contact, "source": source}
+        return await self.request("POST", f"projects/{project_id}/contacts", data=payload)
+
+    async def remove_project_contact(self, project_id: int, contact_id: int, type_contact: str) -> Dict[str, Any]:
+        """Unassign a contact from a project. Requires Dolibarr 23.0+."""
+        return await self.request("DELETE", f"projects/{project_id}/contact/{contact_id}/{type_contact}")
+
     # ============================================================================
     # CATEGORY MANAGEMENT
     # ============================================================================
@@ -1351,6 +1371,14 @@ class DolibarrClient:
         """Get categories assigned to a product."""
         result = await self.request("GET", f"products/{product_id}/categories")
         return result if isinstance(result, list) else []
+
+    async def link_category(self, category_id: int, object_type: str, object_id: int) -> Dict[str, Any]:
+        """Link a category to an object (type: product, customer, supplier, contact, ...)."""
+        return await self.request("POST", f"categories/{category_id}/objects/{object_type}/{object_id}")
+
+    async def unlink_category(self, category_id: int, object_type: str, object_id: int) -> Dict[str, Any]:
+        """Remove a category link from an object."""
+        return await self.request("DELETE", f"categories/{category_id}/objects/{object_type}/{object_id}")
 
     # ============================================================================
     # RAW API CALL
