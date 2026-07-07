@@ -25,6 +25,19 @@ class AnalyticsUnavailableError(Exception):
     """Raised when analytics features are not configured."""
 
 
+# Tools backed by the direct SQL connection rather than the Dolibarr REST API.
+ANALYTICS_TOOLS = frozenset({
+    "get_top_selling_products",
+    "get_sales_summary",
+    "get_low_stock_products",
+})
+
+
+def analytics_available(config: Config) -> bool:
+    """True when the direct SQL analytics layer can run (driver + config present)."""
+    return HAS_AIOMYSQL and config.db_available
+
+
 async def _get_connection(config: Config):
     """Create a single async MySQL connection."""
     if not HAS_AIOMYSQL:

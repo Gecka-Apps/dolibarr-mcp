@@ -24,6 +24,8 @@ from .analytics import (
     get_sales_summary,
     get_low_stock_products,
     AnalyticsUnavailableError,
+    ANALYTICS_TOOLS,
+    analytics_available,
 )
 from .capabilities import Capabilities, MissingUserInfoPermission
 
@@ -49,6 +51,10 @@ server = Server("dolibarr-mcp")
 # Rights of the Dolibarr user behind the API token, resolved once at startup.
 # Gates which tools are advertised and which calls are allowed.
 CAPABILITIES: Capabilities | None = None
+
+# Whether the direct SQL analytics layer is usable, resolved once at startup.
+# None means "not yet checked" (annotation is skipped, e.g. in tests).
+ANALYTICS_AVAILABLE: bool | None = None
 
 
 def _escape_sqlfilter(value: str) -> str:
@@ -81,19 +87,33 @@ _DETAIL_PARAMS = {
 }
 
 
-def _annotate_unavailable(tools):
-    """Flag tools the current user cannot use, keeping them visible.
+def _unavailable_reason(tool_name: str) -> str | None:
+    """Why *tool_name* cannot be used right now, or None if it is available.
 
-    Tools stay advertised so the agent (and user) get an explicit "no permission"
-    answer instead of a silent absence, but their description warns upfront.
+    Two independent gates: the API user's Dolibarr rights (permission takes
+    precedence, it is the more fundamental reason) and, for the SQL-backed
+    analytics tools, whether the database connection is configured and reachable.
     """
-    if CAPABILITIES is None:
-        return tools
+    if CAPABILITIES is not None and not CAPABILITIES.is_allowed(tool_name):
+        return CAPABILITIES.denial_message(tool_name)
+    if tool_name in ANALYTICS_TOOLS and ANALYTICS_AVAILABLE is False:
+        return (
+            "analytics require a database connection; set DB_HOST, DB_NAME, "
+            "DB_USER (and install the [analytics] extra)"
+        )
+    return None
+
+
+def _annotate_unavailable(tools):
+    """Flag tools that cannot be used right now, keeping them visible.
+
+    Tools stay advertised so the agent (and user) get an explicit reason instead
+    of a silent absence, but their description warns upfront.
+    """
     for tool in tools:
-        if not CAPABILITIES.is_allowed(tool.name):
-            tool.description = (
-                f"{tool.description} [UNAVAILABLE: {CAPABILITIES.denial_message(tool.name)}]"
-            )
+        reason = _unavailable_reason(tool.name)
+        if reason:
+            tool.description = f"{tool.description} [UNAVAILABLE: {reason}]"
     return tools
 
 
@@ -1956,19 +1976,23 @@ async def main():
             print("⚠️  Refusing to start without a capability check.", file=sys.stderr)
             sys.exit(1)
 
-    # Test database connection for analytics
+    # Test database connection for analytics; advertise the tools only if it works.
+    global ANALYTICS_AVAILABLE
     if config.db_available:
         try:
             from .analytics import _get_connection
             print("🧪 Testing database connection...", file=sys.stderr)
             conn = await _get_connection(config)
             conn.close()
+            ANALYTICS_AVAILABLE = True
             print("✅ Database connection successful", file=sys.stderr)
             print("📊 Analytics tools available (top sellers, sales summary, low stock)", file=sys.stderr)
         except Exception as e:
+            ANALYTICS_AVAILABLE = False
             print(f"⚠️  Database connection failed: {e}", file=sys.stderr)
-            print("⚠️  Analytics tools will not work, but API tools remain available", file=sys.stderr)
+            print("⚠️  Analytics tools disabled, but API tools remain available", file=sys.stderr)
     else:
+        ANALYTICS_AVAILABLE = False
         print("ℹ️  Database not configured — analytics tools disabled", file=sys.stderr)
         print("📝 Set DB_HOST, DB_NAME, DB_USER, DB_PASSWORD to enable analytics", file=sys.stderr)
 
