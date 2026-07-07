@@ -104,7 +104,7 @@ TOOLS: list[Tool] = [
                                 "type": "number",
                                 "description": "Total including tax",
                             },
-                            "vat": {"type": "number", "description": "VAT rate"},
+                            "tva_tx": {"type": "number", "description": "VAT/TGC rate from the tax dictionary (use get_vat_rates for valid values)"},
                             "product_id": {
                                 "type": "integer",
                                 "description": "Product ID to link (optional)",
@@ -219,9 +219,9 @@ TOOLS: list[Tool] = [
                     "description": "Type (0=Product, 1=Service)",
                     "default": 0,
                 },
-                "vat": {
+                "tva_tx": {
                     "type": "number",
-                    "description": "VAT rate (optional)",
+                    "description": "VAT/TGC rate from the tax dictionary (optional; use get_vat_rates for valid values)",
                 },
             },
             "required": ["invoice_id", "desc", "qty", "subprice"],
@@ -254,9 +254,9 @@ TOOLS: list[Tool] = [
                     "type": "number",
                     "description": "New unit price",
                 },
-                "vat": {
+                "tva_tx": {
                     "type": "number",
-                    "description": "New VAT rate",
+                    "description": "New VAT/TGC rate from the tax dictionary (use get_vat_rates for valid values)",
                 },
             },
             "required": ["invoice_id", "line_id"],

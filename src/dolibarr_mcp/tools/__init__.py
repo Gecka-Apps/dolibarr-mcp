@@ -22,6 +22,7 @@ from . import (
     orders,
     products,
     projects,
+    reference,
     system,
     users,
 )
@@ -37,6 +38,7 @@ _MODULES = [
     categories,
     users,
     analytics,
+    reference,
 ]
 
 ALL_TOOLS: list[Tool] = [tool for module in _MODULES for tool in module.TOOLS]

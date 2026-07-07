@@ -33,6 +33,8 @@ TOOL_PERMISSIONS: dict[str, list[str]] = {
     # System & bootstrap - always available.
     "test_connection": [],
     "get_status": [],
+    # Public tax dictionary lookup - no special right required.
+    "get_vat_rates": [],
     # Search / resolve (read).
     "search_products_by_ref": ["produit.lire"],
     "search_products_by_label": ["produit.lire"],

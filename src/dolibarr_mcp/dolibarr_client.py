@@ -453,7 +453,47 @@ class DolibarrClient:
                     }
             except:
                 raise DolibarrAPIError("Cannot connect to Dolibarr API. Please check your configuration.")
-    
+
+    async def get_company_country_id(self) -> Optional[int]:
+        """Return the configured company's country id (used to scope tax rates)."""
+        try:
+            company = await self.request("GET", "setup/company")
+        except DolibarrAPIError:
+            return None
+        country = company.get("country_id") if isinstance(company, dict) else None
+        return int(country) if country not in (None, "", 0, "0") else None
+
+    async def get_vat_rates(
+        self,
+        country_id: Optional[int] = None,
+        active: int = 1,
+    ) -> List[Dict[str, Any]]:
+        """List tax rates (VAT / TGC) from Dolibarr's tax dictionary.
+
+        Defaults to the company's country so the caller gets the rates that apply
+        to its invoices/orders (e.g. TGC rates in New Caledonia).
+        """
+        if country_id is None:
+            country_id = await self.get_company_country_id()
+        params: Dict[str, Any] = {"active": active, "limit": 100}
+        if country_id is not None:
+            params["fk_country"] = country_id
+        result = await self.request("GET", "setup/dictionary/vat", params=params)
+        rows = result if isinstance(result, list) else []
+        rates = []
+        for r in rows:
+            rate = {
+                "rate": float(r.get("taux", 0)),
+                "code": r.get("code") or None,
+                "note": r.get("note"),
+            }
+            # Surface local taxes only when they are actually set.
+            for lt in ("localtax1", "localtax2"):
+                if r.get(lt) not in (None, "", "0", 0):
+                    rate[lt] = r[lt]
+            rates.append(rate)
+        return rates
+
     # ============================================================================
     # USER MANAGEMENT
     # ============================================================================
