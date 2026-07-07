@@ -709,7 +709,47 @@ class DolibarrClient:
     async def delete_product(self, product_id: int) -> Dict[str, Any]:
         """Delete a product."""
         return await self.request("DELETE", f"products/{product_id}")
-    
+
+    async def get_product_purchase_prices(self, product_id: int) -> List[Dict[str, Any]]:
+        """List supplier (purchase) prices for a product."""
+        result = await self.request("GET", f"products/{product_id}/purchase_prices")
+        return result if isinstance(result, list) else []
+
+    async def add_product_purchase_price(
+        self,
+        product_id: int,
+        supplier_id: int,
+        price: float,
+        supplier_ref: str,
+        qty: float = 1,
+        tva_tx: float = 0,
+        price_base_type: str = "HT",
+        availability: int = 0,
+    ) -> Dict[str, Any]:
+        """Add a supplier price tier for a product (ref_fourn is required by Dolibarr).
+
+        When the multicurrency module is enabled, Dolibarr's update_buyprice
+        overwrites buyprice with multicurrency_buyprice / multicurrency_tx, so we
+        also pass multicurrency_buyprice=price (tx defaults to 1). Harmless when
+        multicurrency is off (that branch is skipped and buyprice is used directly).
+        """
+        payload = {
+            "qty": qty,
+            "buyprice": price,
+            "price_base_type": price_base_type,
+            "fourn_id": supplier_id,
+            "availability": availability,
+            "ref_fourn": supplier_ref,
+            "tva_tx": tva_tx,
+            "multicurrency_buyprice": price,
+            "multicurrency_price_base_type": price_base_type,
+        }
+        return await self.request("POST", f"products/{product_id}/purchase_prices", data=payload)
+
+    async def delete_product_purchase_price(self, product_id: int, price_id: int) -> Dict[str, Any]:
+        """Delete one supplier price tier from a product."""
+        return await self.request("DELETE", f"products/{product_id}/purchase_prices/{price_id}")
+
     # ============================================================================
     # INVOICE MANAGEMENT
     # ============================================================================

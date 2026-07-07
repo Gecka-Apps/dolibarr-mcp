@@ -40,6 +40,10 @@ TOOL_PERMISSIONS: dict[str, list[str]] = {
     "search_products_by_label": ["produit.lire"],
     "resolve_product_ref": ["produit.lire"],
     "search_customers": ["societe.lire"],
+    "search_suppliers": ["societe.lire"],
+    "get_product_purchase_prices": ["produit.lire"],
+    "add_product_purchase_price": ["produit.creer"],
+    "delete_product_purchase_price": ["produit.creer"],
     # Users.
     "get_users": ["user.user.lire"],
     "get_user_by_id": ["user.user.lire"],

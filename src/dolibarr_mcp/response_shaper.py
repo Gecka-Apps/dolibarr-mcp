@@ -175,6 +175,7 @@ TOOL_RESPONSE_CONFIG: Dict[str, Dict[str, Any]] = {
     "search_products_by_ref":   {"entity_type": "product",  "field_set": "standard", "is_list": True},
     "search_products_by_label": {"entity_type": "product",  "field_set": "standard", "is_list": True},
     "search_customers":         {"entity_type": "customer", "field_set": "standard", "is_list": True},
+    "search_suppliers":         {"entity_type": "customer", "field_set": "standard", "is_list": True},
     "search_projects":          {"entity_type": "project",  "field_set": "standard", "is_list": True},
 
     # Category tools

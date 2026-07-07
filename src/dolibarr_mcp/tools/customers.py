@@ -33,6 +33,23 @@ TOOLS: list[Tool] = [
         },
     ),
     Tool(
+        name="search_suppliers",
+        description=(
+            "Search suppliers (third parties flagged as suppliers) by name or alias. Same as "
+            "search_customers but restricted to suppliers."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search term for name or alias"},
+                "limit": {"type": "integer", "description": "Maximum number of results", "default": 20},
+                "fields": LIST_PARAMS["fields"],
+            },
+            "required": ["query"],
+            "additionalProperties": False,
+        },
+    ),
+    Tool(
         name="get_customers",
         description=(
             "Get an unfiltered paginated list of customers/third parties from Dolibarr. "
@@ -159,6 +176,13 @@ async def search_customers(ctx: ToolContext):
     return await ctx.client.search_customers(sqlfilters=sqlfilters, limit=limit, properties=ctx.properties)
 
 
+async def search_suppliers(ctx: ToolContext):
+    query = escape_sqlfilter(ctx.arguments["query"])
+    limit = ctx.arguments.get("limit", 20)
+    sqlfilters = f"((t.nom:like:'%{query}%') OR (t.name_alias:like:'%{query}%')) and (t.fournisseur:>=:1)"
+    return await ctx.client.search_customers(sqlfilters=sqlfilters, limit=limit, properties=ctx.properties)
+
+
 async def get_customers(ctx: ToolContext):
     lk = extract_list_kwargs(ctx.arguments, ctx.config)
     return await ctx.client.get_customers(**lk, properties=ctx.properties)
@@ -184,6 +208,7 @@ async def delete_customer(ctx: ToolContext):
 
 HANDLERS = {
     "search_customers": search_customers,
+    "search_suppliers": search_suppliers,
     "get_customers": get_customers,
     "get_customer_by_id": get_customer_by_id,
     "create_customer": create_customer,

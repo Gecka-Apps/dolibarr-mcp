@@ -165,6 +165,48 @@ TOOLS: list[Tool] = [
             "additionalProperties": False,
         },
     ),
+    Tool(
+        name="get_product_purchase_prices",
+        description="List the supplier (purchase) prices configured for a product.",
+        inputSchema={
+            "type": "object",
+            "properties": {"product_id": {"type": "integer", "description": "Product ID"}},
+            "required": ["product_id"],
+            "additionalProperties": False,
+        },
+    ),
+    Tool(
+        name="add_product_purchase_price",
+        description="Add a supplier price tier to a product. supplier_ref (the supplier's SKU) is required by Dolibarr.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "product_id": {"type": "integer", "description": "Product ID"},
+                "supplier_id": {"type": "integer", "description": "Supplier third-party ID (fourn_id)"},
+                "price": {"type": "number", "description": "Purchase price"},
+                "supplier_ref": {"type": "string", "description": "Supplier reference / SKU (ref_fourn)"},
+                "qty": {"type": "number", "description": "Quantity tier (default 1)", "default": 1},
+                "tva_tx": {"type": "number", "description": "VAT/TGC rate (default 0)"},
+                "price_base_type": {"type": "string", "enum": ["HT", "TTC"], "description": "Price base (default HT)"},
+                "availability": {"type": "integer", "description": "Availability delay id (optional)"},
+            },
+            "required": ["product_id", "supplier_id", "price", "supplier_ref"],
+            "additionalProperties": False,
+        },
+    ),
+    Tool(
+        name="delete_product_purchase_price",
+        description="Delete a supplier price tier from a product.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "product_id": {"type": "integer", "description": "Product ID"},
+                "price_id": {"type": "integer", "description": "Purchase price entry ID"},
+            },
+            "required": ["product_id", "price_id"],
+            "additionalProperties": False,
+        },
+    ),
 ]
 
 
@@ -232,6 +274,20 @@ async def get_product_categories(ctx: ToolContext):
     return await ctx.client.get_product_categories(ctx.arguments["product_id"])
 
 
+async def get_product_purchase_prices(ctx: ToolContext):
+    return await ctx.client.get_product_purchase_prices(ctx.arguments["product_id"])
+
+
+async def add_product_purchase_price(ctx: ToolContext):
+    args = dict(ctx.arguments)
+    product_id = args.pop("product_id")
+    return await ctx.client.add_product_purchase_price(product_id, **{k: v for k, v in args.items() if k != "fields"})
+
+
+async def delete_product_purchase_price(ctx: ToolContext):
+    return await ctx.client.delete_product_purchase_price(ctx.arguments["product_id"], ctx.arguments["price_id"])
+
+
 HANDLERS = {
     "search_products_by_ref": search_products_by_ref,
     "search_products_by_label": search_products_by_label,
@@ -243,4 +299,7 @@ HANDLERS = {
     "delete_product": delete_product,
     "get_products_by_category": get_products_by_category,
     "get_product_categories": get_product_categories,
+    "get_product_purchase_prices": get_product_purchase_prices,
+    "add_product_purchase_price": add_product_purchase_price,
+    "delete_product_purchase_price": delete_product_purchase_price,
 }
