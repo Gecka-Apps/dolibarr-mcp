@@ -50,11 +50,9 @@ def test_every_mapped_permission_exists_in_catalog():
 
 def test_registered_tools_are_all_mapped():
     """Guards against adding a tool without gating it (fail-open safety net)."""
-    import re
-    from pathlib import Path
+    from dolibarr_mcp.tools import ALL_TOOLS
 
-    src = Path(__file__).resolve().parents[1] / "src" / "dolibarr_mcp" / "dolibarr_mcp_server.py"
-    registered = set(re.findall(r'Tool\(\s*name="([^"]+)"', src.read_text()))
+    registered = {tool.name for tool in ALL_TOOLS}
     assert registered, "could not find any registered tools"
     assert registered == set(TOOL_PERMISSIONS), (
         f"unmapped: {registered - set(TOOL_PERMISSIONS)}, "
