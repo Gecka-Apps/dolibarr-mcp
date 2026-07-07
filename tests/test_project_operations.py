@@ -110,4 +110,6 @@ class TestProjectOperations:
             
             assert params["limit"] == 50
             assert params["page"] == 2
-            assert params["status"] == 1
+            # Dolibarr ignores a status query param; we filter via USF sqlfilters.
+            assert params["sqlfilters"] == "(t.fk_statut:=:1)"
+            assert "status" not in params

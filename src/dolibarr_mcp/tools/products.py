@@ -92,16 +92,24 @@ TOOLS: list[Tool] = [
     ),
     Tool(
         name="create_product",
-        description="Create a new product",
+        description="Create a new product or service",
         inputSchema={
             "type": "object",
             "properties": {
+                "ref": {"type": "string", "description": "Product reference / SKU (required by Dolibarr)"},
                 "label": {"type": "string", "description": "Product name/label"},
-                "price": {"type": "number", "description": "Product price"},
+                "type": {
+                    "type": ["string", "integer"],
+                    "enum": ["product", "service", 0, 1],
+                    "description": "0/'product' for a physical product, 1/'service' for a service",
+                },
+                "price": {"type": "number", "description": "Unit price excl. tax (HT). Provide price or price_ttc."},
+                "price_ttc": {"type": "number", "description": "Unit price incl. tax (TTC). Alternative to price."},
+                "tva_tx": {"type": "number", "description": "VAT rate, e.g. 20.0"},
                 "description": {"type": "string", "description": "Product description"},
                 "stock": {"type": "integer", "description": "Initial stock quantity"},
             },
-            "required": ["label", "price"],
+            "required": ["ref", "label", "type"],
             "additionalProperties": False,
         },
     ),

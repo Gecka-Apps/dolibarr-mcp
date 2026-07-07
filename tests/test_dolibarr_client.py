@@ -184,25 +184,25 @@ class TestDolibarrClient:
         assert "price" not in sent_payload
 
     @pytest.mark.asyncio
-    async def test_project_validation_missing_socid(self):
-        """Ensure projects require ref and socid (name/title also required)."""
+    async def test_project_no_socid_required(self):
+        """Projects no longer require a customer; only name/title is mandatory."""
         config = Config(
             dolibarr_url="https://test.dolibarr.com/api/index.php",
             api_key="test_key",
         )
 
         client = DolibarrClient(config)
-        client.request = AsyncMock(return_value={"id": 33})  # Should not be called
+        client.request = AsyncMock(return_value={"id": 33})
 
-        with pytest.raises(DolibarrValidationError) as exc_info:
-            await client.create_project({"ref": "PRJ-1", "title": "Missing Soc"})
+        await client.create_project({"title": "No Soc"})
 
-        assert "socid" in exc_info.value.response_data["missing_fields"]
-        client.request.assert_not_called()
+        sent = client.request.call_args.kwargs["data"]
+        assert sent["title"] == "No Soc"   # Dolibarr expects `title`, not `name`
+        assert "socid" not in sent
 
     @pytest.mark.asyncio
-    async def test_project_autogen_ref_when_enabled(self):
-        """Auto-generate project references when allowed and missing."""
+    async def test_project_ref_defers_to_dolibarr_numbering(self):
+        """create_project sends ref='auto' so Dolibarr's numbering module owns it."""
         config = Config(
             dolibarr_url="https://test.dolibarr.com/api/index.php",
             api_key="test_key",
@@ -216,8 +216,7 @@ class TestDolibarrClient:
         await client.create_project({"title": "Generated Ref Project", "socid": 5})
 
         sent_payload = client.request.call_args.kwargs["data"]
-        assert "ref" in sent_payload
-        assert sent_payload["ref"].startswith("PROJ_")
+        assert sent_payload["ref"] == "auto"
 
     @pytest.mark.asyncio
     @patch('aiohttp.ClientSession.request')

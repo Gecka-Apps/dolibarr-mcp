@@ -568,6 +568,13 @@ class DolibarrClient:
         else:
             payload.setdefault("client", 1)
 
+        # "-1" tells Dolibarr to auto-generate the accounting code via its
+        # numbering module (required at API level with mask-based numbering).
+        if payload.get("client"):
+            payload.setdefault("code_client", "-1")
+        if payload.get("fournisseur"):
+            payload.setdefault("code_fournisseur", "-1")
+
         payload.setdefault("status", payload.get("status", 1))
         payload.setdefault("country_id", payload.get("country_id", 1))
 
@@ -774,8 +781,25 @@ class DolibarrClient:
         data: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> Dict[str, Any]:
-        """Update a line in an invoice."""
-        payload = self._merge_payload(data, **kwargs)
+        """Update a line in an invoice, preserving fields that are not provided.
+
+        Dolibarr's line PUT is a full replace, so a partial payload would blank
+        the omitted fields. We fetch the current line and overlay only the
+        provided values.
+        """
+        updates = self._merge_payload(data, **kwargs)
+        payload = updates
+        invoice = await self.get_invoice_by_id(invoice_id)
+        lines = invoice.get("lines", []) if isinstance(invoice, dict) else []
+        current = next(
+            (l for l in lines if str(l.get("id") or l.get("rowid")) == str(line_id)),
+            None,
+        )
+        if current is not None:
+            preserved = ("desc", "subprice", "qty", "tva_tx", "product_type", "fk_product", "remise_percent")
+            base = {k: current[k] for k in preserved if current.get(k) is not None}
+            base.update(updates)
+            payload = base
         return await self.request("PUT", f"invoices/{invoice_id}/lines/{line_id}", data=payload)
 
     async def delete_invoice_line(self, invoice_id: int, line_id: int) -> Dict[str, Any]:
@@ -901,7 +925,8 @@ class DolibarrClient:
         """Get list of projects."""
         params: Dict[str, Any] = {"limit": limit}
         if status is not None:
-            params["status"] = status
+            # Dolibarr ignores a `status` query param on /projects; filter via USF.
+            params["sqlfilters"] = f"(t.fk_statut:=:{status})"
         self._add_list_params(params, page=page, sortfield=sortfield, sortorder=sortorder, properties=properties)
         result = await self.request("GET", "projects", params=params)
         return result if isinstance(result, list) else []
@@ -926,12 +951,14 @@ class DolibarrClient:
     async def create_project(self, data: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
         """Create a new project."""
         payload = self._merge_payload(data, **kwargs)
+        # Let Dolibarr's numbering module assign the ref; a customer is optional.
+        payload.setdefault("ref", "auto")
+        # Dolibarr's /projects endpoint expects `title`, not `name`.
         payload = self._validate_payload(
             endpoint="projects",
             payload=payload,
-            required_fields=["ref", "name", "socid"],
-            aliases={"name": ["title"]},
-            non_empty_fields=["socid"],
+            required_fields=["title"],
+            aliases={"title": ["name"]},
         )
         result = await self.request("POST", "projects", data=payload)
         return self._extract_identifier(result)
