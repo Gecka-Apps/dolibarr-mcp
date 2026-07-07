@@ -19,6 +19,7 @@ configuration, API coverage, and contributor workflows.
 - **Full ERP coverage** – CRUD tools for users, customers, products, invoices,
   orders, contacts, projects, and raw API access.
 - **Advanced Search** – Server-side filtering for products, customers, and projects to minimize token usage and costs.
+- **Capability-aware** – Tools are gated to the Dolibarr rights of the API user; unauthorized calls are refused with an explicit reason instead of an opaque error.
 - **Async/await HTTP client** – Efficient Dolibarr API wrapper with structured
   error handling.
 - **Ready for MCP hosts** – STDIO transport compatible with Claude Desktop out
@@ -31,6 +32,11 @@ configuration, API coverage, and contributor workflows.
 - Python 3.8 or newer.
 - Access to a Dolibarr installation with the REST API enabled and a personal API
   token.
+- The API user must hold the **"Create/modify its own user info"**
+  (`user.self.creer`) permission. The server reads the user's rights at startup
+  to gate tools to what it can actually do, and that read requires this
+  permission (administrators are exempt). See
+  [Configuration](docs/configuration.md#required-dolibarr-permission-capability-gating).
 
 ## 📦 Installation
 

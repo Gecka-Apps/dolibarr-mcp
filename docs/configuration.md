@@ -31,6 +31,24 @@ The [`Config` class](../src/dolibarr_mcp/config.py) is built with
 legacy variable names and raises a descriptive error if placeholder credentials
 are detected.
 
+## Required Dolibarr permission (capability gating)
+
+The server is capability-aware: at startup it reads the rights of the user behind
+`DOLIBARR_API_KEY` (via `GET /users/info?includepermissions=1`) and only allows
+each tool if that user actually holds the matching Dolibarr permission. Tools the
+user cannot use stay listed but are flagged as unavailable, and calling them
+returns an explicit "permission denied" message instead of an opaque error.
+
+Reading those rights itself requires one permission, so it is **mandatory** for
+every MCP user:
+
+> **User / Users / "Create/modify its own user info"** (`user.self.creer`)
+
+Without it, `/users/info` returns `403`, the server cannot determine the user's
+capabilities, and it refuses to start. This permission is harmless on its own
+(it only lets the user edit its own profile) and does not grant access to any
+business data. Administrators bypass the check entirely and get every tool.
+
 ## Testing credentials
 
 Use the standalone helper to verify that the credentials are accepted by

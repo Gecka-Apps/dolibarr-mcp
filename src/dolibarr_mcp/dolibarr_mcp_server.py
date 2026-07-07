@@ -25,6 +25,7 @@ from .analytics import (
     get_low_stock_products,
     AnalyticsUnavailableError,
 )
+from .capabilities import Capabilities, MissingUserInfoPermission
 
 # HTTP transport imports
 from starlette.applications import Starlette
@@ -44,6 +45,10 @@ logging.basicConfig(
 
 # Create server instance
 server = Server("dolibarr-mcp")
+
+# Rights of the Dolibarr user behind the API token, resolved once at startup.
+# Gates which tools are advertised and which calls are allowed.
+CAPABILITIES: Capabilities | None = None
 
 
 def _escape_sqlfilter(value: str) -> str:
@@ -76,10 +81,26 @@ _DETAIL_PARAMS = {
 }
 
 
+def _annotate_unavailable(tools):
+    """Flag tools the current user cannot use, keeping them visible.
+
+    Tools stay advertised so the agent (and user) get an explicit "no permission"
+    answer instead of a silent absence, but their description warns upfront.
+    """
+    if CAPABILITIES is None:
+        return tools
+    for tool in tools:
+        if not CAPABILITIES.is_allowed(tool.name):
+            tool.description = (
+                f"{tool.description} [UNAVAILABLE: {CAPABILITIES.denial_message(tool.name)}]"
+            )
+    return tools
+
+
 @server.list_tools()
 async def handle_list_tools():
     """List all available tools."""
-    return [
+    tools = [
         # System & Info
         Tool(
             name="test_connection",
@@ -1388,6 +1409,7 @@ async def handle_list_tools():
             },
         ),
     ]
+    return _annotate_unavailable(tools)
 
 
 def _extract_list_kwargs(arguments: dict, config: Config) -> dict:
@@ -1410,6 +1432,15 @@ async def handle_call_tool(name: str, arguments: dict):
     """Handle all tool calls using the DolibarrClient."""
 
     try:
+        # Refuse calls the API user has no rights for, with an explicit reason.
+        if CAPABILITIES is not None and not CAPABILITIES.is_allowed(name):
+            return [TextContent(type="text", text=json.dumps({
+                "error": "PermissionDenied",
+                "status": 403,
+                "message": CAPABILITIES.denial_message(name),
+                "missing_permissions": CAPABILITIES.missing(name),
+            }, separators=(",", ":")))]
+
         # Initialize the config and client
         config = Config()
 
@@ -1906,7 +1937,25 @@ async def main():
             print("📝 Configure your .env file to enable API functionality", file=sys.stderr)
         else:
             print("✅ API connection validated", file=sys.stderr)
-    
+
+    # Discover the API user's rights so tools are gated to what it can actually do.
+    global CAPABILITIES
+    if api_ok:
+        try:
+            print("🧪 Discovering Dolibarr user permissions...", file=sys.stderr)
+            async with DolibarrClient(config) as client:
+                CAPABILITIES = await Capabilities.fetch(client)
+            scope = "administrator (all tools)" if CAPABILITIES.admin else f"{len(CAPABILITIES.rights)} modules"
+            print(f"✅ Permissions resolved: {scope}", file=sys.stderr)
+        except MissingUserInfoPermission as e:
+            print(f"❌ {e}", file=sys.stderr)
+            print("📝 Grant that permission to the MCP user in Dolibarr, then restart.", file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:
+            print(f"❌ Could not resolve user permissions: {e}", file=sys.stderr)
+            print("⚠️  Refusing to start without a capability check.", file=sys.stderr)
+            sys.exit(1)
+
     # Test database connection for analytics
     if config.db_available:
         try:
