@@ -107,15 +107,12 @@ class DolibarrClient:
         return await self._make_request(method, endpoint, params=params, data=data)
 
     def _build_url(self, endpoint: str) -> str:
-        """Build full API URL."""
-        endpoint = endpoint.lstrip('/')
-        base = self.base_url.rstrip('/')
+        """Build the full API URL, honouring the configured base as it stands.
 
-        if endpoint == "status":
-            base_without_index = base.replace('/index.php', '')
-            return f"{base_without_index}/status"
-
-        return f"{base}/{endpoint}"
+        Whether the instance serves the API through ``/api/index.php`` or through
+        a rewritten ``/api`` is the base URL's business, not this method's.
+        """
+        return f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
 
     def _mask_api_key(self) -> str:
         """Return a masked representation of the API key for logging."""
