@@ -1,0 +1,43 @@
+# The image needs pyproject.toml, uv.lock, src/, README.md and LICENSE.
+# Everything below either bloats the build context or would ship host-built
+# artefacts into the image.
+
+# Version control
+.git/
+.gitattributes
+.gitignore
+
+# Local virtualenv: the image builds its own under /app/.venv
+.venv/
+venv/
+
+# Python build and cache artefacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Test and coverage output
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+tests/
+
+# Local configuration, may hold API keys
+.env
+.env.*
+!.env.example
+
+# Editor and OS noise
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Not consumed by the build
+docker-compose.yml
+docs/
+scripts/
+CHANGELOG.md
