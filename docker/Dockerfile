@@ -1,11 +1,15 @@
 # Multi-stage Docker build for Dolibarr MCP Server
-FROM python:3.12-slim as builder
+FROM python:3.12-slim AS builder
 
-# Set environment variables
+# Dependency resolution is pinned to uv.lock, so the image ships the exact
+# versions the test-suite runs against.
+COPY --from=ghcr.io/astral-sh/uv:0.9.27 /uv /uvx /bin/
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/app/.venv
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -16,26 +20,23 @@ RUN apt-get update && apt-get install -y \
 # Create working directory
 WORKDIR /app
 
-# Copy dependency files
-COPY requirements.txt pyproject.toml ./
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Third-party dependencies first, so a source-only change keeps this layer
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-install-project --extra analytics
 
 # Copy source code
 COPY src/ ./src/
 COPY README.md LICENSE ./
 
-# Install the package with analytics support
-RUN pip install -e ".[analytics]"
+# Install the package itself into the same environment
+RUN uv sync --frozen --extra analytics
 
 # Production stage
-FROM python:3.12-slim as production
+FROM python:3.12-slim AS production
 
-# Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/app/.venv/bin:$PATH"
 
 # Create non-root user
 RUN groupadd -r dolibarr && useradd -r -g dolibarr dolibarr
@@ -45,9 +46,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
-COPY --from=builder /usr/local/bin/ /usr/local/bin/
+# The project is installed in editable mode, so the environment and the sources
+# it points at must land on the same paths as in the builder.
+COPY --from=builder /app/.venv/ /app/.venv/
 COPY --from=builder /app/src/ /app/src/
 
 # Create working directory and set ownership

@@ -33,13 +33,17 @@ classifiers = [
     "Topic :: System :: Systems Administration",
 ]
 dependencies = [
-    "mcp>=1.0.0",
+    # The server is built on the v1 low-level API (``Server`` plus the
+    # ``list_tools``/``call_tool`` decorators), which the 2.x redesign replaces
+    # with constructor handlers.
+    "mcp>=1.27,<2",
     "aiohttp>=3.9.0",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.0.0",
     "click>=8.1.0",
     "python-dotenv>=1.0.0",
     "uvicorn>=0.25.0",
+    "starlette>=0.37,<2",
 ]
 
 [project.optional-dependencies]

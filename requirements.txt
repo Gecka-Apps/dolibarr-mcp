@@ -1,5 +1,7 @@
 # Core MCP dependencies
-mcp>=1.0.0
+# Capped below 2.x: that release replaces the low-level decorator API this
+# server is built on.
+mcp>=1.27,<2
 
 # HTTP and async support
 aiohttp>=3.9.0
@@ -14,6 +16,7 @@ click>=8.1.0
 
 # HTTP server runtime for Streamable HTTP transport
 uvicorn>=0.25.0
+starlette>=0.37,<2
 
 # Analytics (database access for aggregation queries)
 aiomysql>=0.2.0
