@@ -197,13 +197,13 @@ async def test_api_connection(config: Config | None = None):
                 api_ok = True
             else:
                 print(f"⚠️  API test returned unexpected result: {result}", file=sys.stderr)
-                print("⚠️  Server will start but API calls may fail", file=sys.stderr)
+                print("⚠️  API calls will fail until this is fixed", file=sys.stderr)
                 api_ok = False
     except Exception as e:
         print(f"⚠️  API test error: {e}", file=sys.stderr)
         if config is None or created_config:
             print("💡 Check your .env file configuration", file=sys.stderr)
-        print("⚠️  Server will start but API calls may fail", file=sys.stderr)
+        print("⚠️  API calls will fail until this is fixed", file=sys.stderr)
         api_ok = False
     
     yield api_ok
@@ -339,31 +339,29 @@ async def main():
     """Run the Dolibarr MCP server."""
     config = Config()
 
-    # Test API connection but don't fail if it's not working
+    # Report on the API connection; the capability check below is what decides
+    # whether the server actually starts.
     async with test_api_connection(config) as api_ok:
-        if not api_ok:
-            print("⚠️  Starting server without valid API connection", file=sys.stderr)
-            print("📝 Configure your .env file to enable API functionality", file=sys.stderr)
-        else:
+        if api_ok:
             print("✅ API connection validated", file=sys.stderr)
 
     # Discover the API user's rights so tools are gated to what it can actually do.
+    # Runs unconditionally: skipping it would leave every tool ungated.
     global CAPABILITIES
-    if api_ok:
-        try:
-            print("🧪 Discovering Dolibarr user permissions...", file=sys.stderr)
-            async with DolibarrClient(config) as client:
-                CAPABILITIES = await Capabilities.fetch(client)
-            scope = "administrator (all tools)" if CAPABILITIES.admin else f"{len(CAPABILITIES.rights)} modules"
-            print(f"✅ Permissions resolved: {scope}", file=sys.stderr)
-        except MissingUserInfoPermission as e:
-            print(f"❌ {e}", file=sys.stderr)
-            print("📝 Grant that permission to the MCP user in Dolibarr, then restart.", file=sys.stderr)
-            sys.exit(1)
-        except Exception as e:
-            print(f"❌ Could not resolve user permissions: {e}", file=sys.stderr)
-            print("⚠️  Refusing to start without a capability check.", file=sys.stderr)
-            sys.exit(1)
+    try:
+        print("🧪 Discovering Dolibarr user permissions...", file=sys.stderr)
+        async with DolibarrClient(config) as client:
+            CAPABILITIES = await Capabilities.fetch(client)
+        scope = "administrator (all tools)" if CAPABILITIES.admin else f"{len(CAPABILITIES.rights)} modules"
+        print(f"✅ Permissions resolved: {scope}", file=sys.stderr)
+    except MissingUserInfoPermission as e:
+        print(f"❌ {e}", file=sys.stderr)
+        print("📝 Grant that permission to the MCP user in Dolibarr, then restart.", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Could not resolve user permissions: {e}", file=sys.stderr)
+        print("⚠️  Refusing to start without a capability check.", file=sys.stderr)
+        sys.exit(1)
 
     # Test database connection for analytics; advertise the tools only if it works.
     global ANALYTICS_AVAILABLE
